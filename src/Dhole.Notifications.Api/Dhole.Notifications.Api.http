@@ -1,0 +1,64 @@
+@host = http://localhost:5209
+@token = REPLACE_WITH_JWT
+@templateId = REPLACE_WITH_TEMPLATE_ID
+@notificationId = REPLACE_WITH_NOTIFICATION_ID
+
+GET {{host}}/health
+Accept: application/json
+
+### Browse templates
+GET {{host}}/api/notifications/templates?pageNumber=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Create template
+POST {{host}}/api/notifications/templates
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "code": "generic-system-reminder",
+  "name": "Generic system reminder",
+  "description": "Reusable system reminder",
+  "notificationType": "generic.reminder",
+  "channel": "System",
+  "subjectTemplate": "Reminder: {{title}}",
+  "bodyTemplate": "<div><h2>{{title}}</h2><p>{{message}}</p></div>",
+  "designerJson": "[]"
+}
+
+### Create immediate internal notification
+POST {{host}}/api/notifications/messages
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "notificationType": "generic.reminder",
+  "templateCode": "generic-system-reminder",
+  "channel": "System",
+  "entityType": "Task",
+  "entityId": "TASK-1001",
+  "payloadJson": "{\"title\":\"Follow up\",\"message\":\"Review the pending item\"}",
+  "maxAttempts": 3,
+  "recipients": [
+    {
+      "userId": null,
+      "address": "user@example.local",
+      "displayName": "Dhole user"
+    }
+  ]
+}
+
+### Browse notifications
+GET {{host}}/api/notifications/messages?pageNumber=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Entity history
+GET {{host}}/api/notifications/messages/history/entity?entityType=Task&entityId=TASK-1001&pageNumber=1&pageSize=20
+Authorization: Bearer {{token}}
+Accept: application/json
+
+### Cancel notification
+POST {{host}}/api/notifications/messages/{{notificationId}}/cancel
+Authorization: Bearer {{token}}

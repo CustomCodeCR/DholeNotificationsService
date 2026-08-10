@@ -1,0 +1,15 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Dhole.Notifications.Api/Dhole.Notifications.Api.csproj" />
+    <Project Path="src/Dhole.Notifications.Application/Dhole.Notifications.Application.csproj" />
+    <Project Path="src/Dhole.Notifications.Contracts/Dhole.Notifications.Contracts.csproj" />
+    <Project Path="src/Dhole.Notifications.Domain/Dhole.Notifications.Domain.csproj" />
+    <Project Path="src/Dhole.Notifications.Infrastructure/Dhole.Notifications.Infrastructure.csproj" />
+    <Project Path="src/Dhole.Notifications.Persistence/Dhole.Notifications.Persistence.csproj" />
+    <Project Path="src/Dhole.Notifications.Workers/Dhole.Notifications.Workers.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Dhole.Notifications.IntegrationTests/Dhole.Notifications.IntegrationTests.csproj" />
+    <Project Path="tests/Dhole.Notifications.UnitTests/Dhole.Notifications.UnitTests.csproj" />
+  </Folder>
+</Solution>

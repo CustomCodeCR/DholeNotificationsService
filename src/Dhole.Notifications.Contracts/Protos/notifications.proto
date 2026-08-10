@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+option csharp_namespace = "Dhole.Notifications.Contracts.Grpc";
+
+package dhole.notifications;
+
+service NotificationsGrpc {
+  rpc CreateNotification (CreateNotificationGrpcRequest) returns (CreateNotificationGrpcResponse);
+  rpc CancelNotification (CancelNotificationGrpcRequest) returns (NotificationOperationGrpcResponse);
+  rpc GetNotification (GetNotificationGrpcRequest) returns (GetNotificationGrpcResponse);
+}
+
+message NotificationRecipientGrpcModel {
+  string user_id = 1;
+  string address = 2;
+  string display_name = 3;
+}
+
+message CreateNotificationGrpcRequest {
+  string notification_type = 1;
+  string template_code = 2;
+  string channel = 3;
+  string entity_type = 4;
+  string entity_id = 5;
+  string subject = 6;
+  string body = 7;
+  string payload_json = 8;
+  string scheduled_for_utc = 9;
+  int32 max_attempts = 10;
+  repeated NotificationRecipientGrpcModel recipients = 11;
+}
+
+message CreateNotificationGrpcResponse {
+  bool success = 1;
+  string notification_id = 2;
+  string status = 3;
+  string error = 4;
+}
+
+message CancelNotificationGrpcRequest {
+  string notification_id = 1;
+  string actor_user_id = 2;
+}
+
+message GetNotificationGrpcRequest {
+  string notification_id = 1;
+}
+
+message GetNotificationGrpcResponse {
+  bool found = 1;
+  string notification_id = 2;
+  string notification_type = 3;
+  string template_code = 4;
+  string channel = 5;
+  string entity_type = 6;
+  string entity_id = 7;
+  string subject = 8;
+  string body = 9;
+  string status = 10;
+  string scheduled_for_utc = 11;
+  string sent_at_utc = 12;
+  int32 attempt_count = 13;
+  string last_error = 14;
+}
+
+message NotificationOperationGrpcResponse {
+  bool success = 1;
+  string status = 2;
+  string error = 3;
+}
