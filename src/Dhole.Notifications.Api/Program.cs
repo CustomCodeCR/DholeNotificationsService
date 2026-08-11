@@ -1,9 +1,11 @@
 using CustomCodeFramework.Api.DependencyInjection;
 using CustomCodeFramework.Api.Swagger;
+using CustomCodeFramework.Core.Abstractions;
 using Dhole.Notifications.Api.Endpoints;
 using Dhole.Notifications.Api.Grpc;
 using Dhole.Notifications.Application.DependencyInjection;
 using Dhole.Notifications.Infrastructure.DependencyInjection;
+using Dhole.Notifications.Infrastructure.Time;
 using Dhole.Notifications.Persistence.DbContexts;
 using Dhole.Notifications.Persistence.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +18,7 @@ builder.Services.AddCors(options => options.AddPolicy(CorsPolicyName, policy => 
     .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://192.168.1.193:5173")
     .AllowAnyHeader().AllowAnyMethod()));
 builder.Services.AddGrpc();
+builder.Services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 builder.Services.AddApplication();
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);

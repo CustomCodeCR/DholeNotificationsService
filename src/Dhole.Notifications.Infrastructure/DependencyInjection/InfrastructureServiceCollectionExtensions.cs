@@ -26,6 +26,15 @@ public static class InfrastructureServiceCollectionExtensions
             options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
             options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
         });
+
+        return services.AddSharedInfrastructure(configuration);
+    }
+
+    public static IServiceCollection AddWorkerInfrastructure(this IServiceCollection services, IConfiguration configuration)
+        => services.AddSharedInfrastructure(configuration);
+
+    private static IServiceCollection AddSharedInfrastructure(IServiceCollection services, IConfiguration configuration)
+    {
         services.AddCustomCodeRedis(configuration);
         services.AddCustomCodeMongo(configuration);
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
