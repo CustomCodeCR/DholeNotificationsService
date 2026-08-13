@@ -8,6 +8,7 @@ using Dhole.Notifications.Infrastructure.Delivery;
 using Dhole.Notifications.Infrastructure.Mongo;
 using Dhole.Notifications.Infrastructure.Queue;
 using Dhole.Notifications.Infrastructure.Rendering;
+using Dhole.Notifications.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
@@ -27,11 +28,11 @@ public static class InfrastructureServiceCollectionExtensions
             options.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
         });
 
-        return services.AddSharedInfrastructure(configuration);
+        return AddSharedInfrastructure(services, configuration);
     }
 
     public static IServiceCollection AddWorkerInfrastructure(this IServiceCollection services, IConfiguration configuration)
-        => services.AddSharedInfrastructure(configuration);
+        => AddSharedInfrastructure(services, configuration);
 
     private static IServiceCollection AddSharedInfrastructure(IServiceCollection services, IConfiguration configuration)
     {
@@ -42,6 +43,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddScoped<INotificationPendingQueue, NotificationPendingQueue>();
         services.AddScoped<INotificationDocumentStore, NotificationDocumentStore>();
         services.AddSingleton<INotificationTemplateRenderer, NotificationTemplateRenderer>();
+        services.AddSingleton<SystemNotificationRealtimeBus>();
         services.AddScoped<INotificationDeliveryChannel, SystemNotificationDeliveryChannel>();
         services.AddScoped<INotificationDeliveryChannel, EmailNotificationDeliveryChannel>();
         services.AddSingleton<INotificationDeliveryChannel>(new FutureNotificationDeliveryChannel(NotificationChannel.WhatsAppFuture));

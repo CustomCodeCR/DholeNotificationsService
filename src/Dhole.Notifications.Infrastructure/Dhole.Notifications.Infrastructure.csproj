@@ -13,6 +13,7 @@
     <PackageReference Include="CustomCodeFramework.Auth.Redis" Version="0.2.0" />
     <PackageReference Include="CustomCodeFramework.Redis" Version="0.2.0" />
     <PackageReference Include="CustomCodeFramework.Redis.Streams" Version="0.2.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.13.17" />
     <PackageReference Include="CustomCodeFramework.Mongo" Version="0.2.0" />
   </ItemGroup>
 

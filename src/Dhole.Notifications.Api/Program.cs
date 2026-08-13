@@ -1,3 +1,5 @@
+using Dhole.Notifications.Api.Hubs;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using CustomCodeFramework.Api.DependencyInjection;
 using CustomCodeFramework.Api.Swagger;
 using CustomCodeFramework.Core.Abstractions;
@@ -14,14 +16,31 @@ var builder = WebApplication.CreateBuilder(args);
 const string CorsPolicyName = "DholeWebCors";
 
 builder.Services.AddCustomCodeApiWithSwagger(title: "Dhole Notifications Service", version: "v1");
+var corsOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+    ?? ["http://localhost:5173", "http://127.0.0.1:5173"];
 builder.Services.AddCors(options => options.AddPolicy(CorsPolicyName, policy => policy
-    .WithOrigins("http://localhost:5173", "http://127.0.0.1:5173", "http://192.168.1.193:5173")
-    .AllowAnyHeader().AllowAnyMethod()));
+    .WithOrigins(corsOrigins)
+    .AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 builder.Services.AddGrpc();
+builder.Services.AddSignalR();
+builder.Services.AddHostedService<NotificationRealtimeRelayService>();
 builder.Services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 builder.Services.AddApplication();
 builder.Services.AddPersistence(builder.Configuration);
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.AuthenticationScheme, options =>
+{
+    var previous = options.Events.OnMessageReceived;
+    options.Events.OnMessageReceived = async context =>
+    {
+        if (previous is not null) await previous(context);
+        if (string.IsNullOrWhiteSpace(context.Token)
+            && context.HttpContext.Request.Path.StartsWithSegments("/api/notifications/hub"))
+        {
+            context.Token = context.Request.Query["access_token"];
+        }
+    };
+});
 
 var app = builder.Build();
 app.UseCustomCodeApi();
@@ -34,6 +53,7 @@ app.UseAuthorization();
 app.MapGrpcService<NotificationsGrpcService>();
 app.MapNotificationTemplateEndpoints();
 app.MapNotificationMessageEndpoints();
+app.MapHub<NotificationsHub>("/api/notifications/hub");
 
 using (var scope = app.Services.CreateScope())
 {
