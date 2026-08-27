@@ -1,4 +1,5 @@
 using Dhole.Notifications.Api.Hubs;
+using Dhole.Notifications.Api.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using CustomCodeFramework.Api.DependencyInjection;
 using CustomCodeFramework.Api.Swagger;
@@ -50,6 +51,7 @@ if (app.Environment.IsDevelopment()) app.UseCustomCodeSwagger();
 app.MapGet("/health", () => Results.Ok(new { service = "DholeNotificationsService", status = "Healthy", timestamp = DateTimeOffset.UtcNow })).AllowAnonymous();
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseMiddleware<AuditEndpointMiddleware>();
 app.MapGrpcService<NotificationsGrpcService>();
 app.MapNotificationTemplateEndpoints();
 app.MapNotificationMessageEndpoints();
