@@ -55,12 +55,37 @@ app.UseMiddleware<AuditEndpointMiddleware>();
 app.MapGrpcService<NotificationsGrpcService>();
 app.MapNotificationTemplateEndpoints();
 app.MapNotificationMessageEndpoints();
+app.MapNotificationInboxEndpoints();
 app.MapHub<NotificationsHub>("/api/notifications/hub");
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ServiceDbContext>();
     await db.Database.EnsureCreatedAsync();
+    await db.Database.ExecuteSqlRawAsync("""
+        DO $dhole$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'notifications'
+                  AND table_name = 'notification_recipients'
+                  AND column_name = 'read_at_utc'
+            ) THEN
+                ALTER TABLE notifications.notification_recipients
+                ADD COLUMN read_at_utc timestamp with time zone NULL;
+
+                UPDATE notifications.notification_recipients
+                SET read_at_utc = created_at_utc
+                WHERE read_at_utc IS NULL;
+            END IF;
+        END
+        $dhole$;
+
+        CREATE INDEX IF NOT EXISTS "IX_notification_recipients_user_read_created"
+        ON notifications.notification_recipients (user_id, read_at_utc, created_at_utc DESC)
+        WHERE user_id IS NOT NULL;
+        """);
 }
 
 app.Run();

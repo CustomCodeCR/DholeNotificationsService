@@ -54,6 +54,20 @@ public sealed record NotificationMessageDto(
     IReadOnlyCollection<NotificationRecipientDto> Recipients,
     IReadOnlyCollection<NotificationDeliveryAttemptDto> DeliveryAttempts);
 
+public sealed record NotificationInboxItemDto(
+    Guid RecipientId,
+    Guid NotificationId,
+    string NotificationType,
+    string? Subject,
+    string? Body,
+    string PayloadJson,
+    string? EntityType,
+    string? EntityId,
+    DateTime CreatedAtUtc,
+    DateTime? ReadAtUtc);
+
+public sealed record NotificationUnreadCountDto(int UnreadCount);
+
 public sealed record PagedNotificationResult<T>(
     IReadOnlyCollection<T> Items,
     int PageNumber,
