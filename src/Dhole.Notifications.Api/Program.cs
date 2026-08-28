@@ -55,12 +55,21 @@ app.UseMiddleware<AuditEndpointMiddleware>();
 app.MapGrpcService<NotificationsGrpcService>();
 app.MapNotificationTemplateEndpoints();
 app.MapNotificationMessageEndpoints();
+app.MapNotificationInboxEndpoints();
 app.MapHub<NotificationsHub>("/api/notifications/hub");
 
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ServiceDbContext>();
     await db.Database.EnsureCreatedAsync();
+    await db.Database.ExecuteSqlRawAsync("""
+        ALTER TABLE notifications.notification_recipients
+        ADD COLUMN IF NOT EXISTS read_at_utc timestamp with time zone NULL;
+
+        CREATE INDEX IF NOT EXISTS "IX_notification_recipients_user_read_created"
+        ON notifications.notification_recipients (user_id, read_at_utc, created_at_utc DESC)
+        WHERE user_id IS NOT NULL;
+        """);
 }
 
 app.Run();
