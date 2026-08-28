@@ -63,8 +63,24 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<ServiceDbContext>();
     await db.Database.EnsureCreatedAsync();
     await db.Database.ExecuteSqlRawAsync("""
-        ALTER TABLE notifications.notification_recipients
-        ADD COLUMN IF NOT EXISTS read_at_utc timestamp with time zone NULL;
+        DO $dhole$
+        BEGIN
+            IF NOT EXISTS (
+                SELECT 1
+                FROM information_schema.columns
+                WHERE table_schema = 'notifications'
+                  AND table_name = 'notification_recipients'
+                  AND column_name = 'read_at_utc'
+            ) THEN
+                ALTER TABLE notifications.notification_recipients
+                ADD COLUMN read_at_utc timestamp with time zone NULL;
+
+                UPDATE notifications.notification_recipients
+                SET read_at_utc = created_at_utc
+                WHERE read_at_utc IS NULL;
+            END IF;
+        END
+        $dhole$;
 
         CREATE INDEX IF NOT EXISTS "IX_notification_recipients_user_read_created"
         ON notifications.notification_recipients (user_id, read_at_utc, created_at_utc DESC)
