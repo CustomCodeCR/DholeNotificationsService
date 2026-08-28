@@ -15,7 +15,9 @@ internal sealed class NotificationRecipientConfiguration : EntityTypeConfigurati
         builder.Property(x => x.Address).HasMaxLength(500).IsRequired();
         builder.Property(x => x.DisplayName).HasMaxLength(250);
         builder.Property(x => x.CreatedAtUtc).IsRequired();
+        builder.Property(x => x.ReadAtUtc);
         builder.HasIndex(x => x.UserId);
         builder.HasIndex(x => x.Address);
+        builder.HasIndex(x => new { x.UserId, x.ReadAtUtc, x.CreatedAtUtc });
     }
 }
