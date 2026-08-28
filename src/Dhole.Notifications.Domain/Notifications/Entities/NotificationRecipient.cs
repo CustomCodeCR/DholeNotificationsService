@@ -21,6 +21,7 @@ public sealed class NotificationRecipient : Entity<Guid>
     public string Address { get; private set; } = string.Empty;
     public string? DisplayName { get; private set; }
     public DateTime CreatedAtUtc { get; private set; }
+    public DateTime? ReadAtUtc { get; private set; }
 
     public NotificationMessage NotificationMessage { get; private set; } = default!;
 
@@ -34,5 +35,12 @@ public sealed class NotificationRecipient : Entity<Guid>
             : address;
 
         return new NotificationRecipient(Guid.NewGuid(), notificationMessageId, userId, normalizedAddress, displayName);
+    }
+
+    public bool MarkRead(DateTime? readAtUtc = null)
+    {
+        if (ReadAtUtc.HasValue) return false;
+        ReadAtUtc = readAtUtc?.ToUniversalTime() ?? DateTime.UtcNow;
+        return true;
     }
 }
