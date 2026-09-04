@@ -1,0 +1,67 @@
+name: Diagnose production SignalR
+
+on:
+  push:
+    branches: [diag-signalr-production]
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: [self-hosted, linux, x64, dhole]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Inspect production containers and realtime pipeline
+        shell: bash
+        run: |
+          set +e
+          echo '=== CONTAINERS ==='
+          docker ps --format '{{.Names}}|{{.Status}}|{{.Image}}' | grep -Ei 'notifications|pricing|gateway|redis|postgres|auth' || true
+
+          echo '=== SIGNALR / NOTIFICATIONS API LOGS (30m) ==='
+          for c in $(docker ps --format '{{.Names}}' | grep -Ei 'notifications-api|api-gateway|gateway'); do
+            echo "--- $c ---"
+            docker logs --since 30m --tail 500 "$c" 2>&1 | grep -Ei 'signalr|websocket|hub|notification|redis|error|exception|fail|abort|unauthor|401|403' | tail -n 250 || true
+          done
+
+          echo '=== NOTIFICATIONS WORKER LOGS (30m) ==='
+          for c in $(docker ps --format '{{.Names}}' | grep -Ei 'notifications-workers|notifications-worker'); do
+            echo "--- $c ---"
+            docker logs --since 30m --tail 800 "$c" 2>&1 | grep -Ei 'notification|redis|stream|rate-request|error|exception|fail|signalr' | tail -n 350 || true
+          done
+
+          echo '=== PRICING LOGS (30m) ==='
+          for c in $(docker ps --format '{{.Names}}' | grep -Ei 'pricing-api|pricing-worker'); do
+            echo "--- $c ---"
+            docker logs --since 30m --tail 800 "$c" 2>&1 | grep -Ei 'rate.request|rate-request|notification|outbox|redis|error|exception|fail|pricing-notification' | tail -n 350 || true
+          done
+
+          REDIS_CONTAINER=$(docker ps --format '{{.Names}}' | grep -Ei '(^|[-_])redis([-_]|$)' | head -n 1)
+          if [ -n "$REDIS_CONTAINER" ]; then
+            echo "=== REDIS ($REDIS_CONTAINER) ==="
+            docker exec "$REDIS_CONTAINER" redis-cli PING || true
+            echo '--- realtime pub/sub subscribers ---'
+            docker exec "$REDIS_CONTAINER" redis-cli PUBSUB NUMSUB dhole.notifications.signalr || true
+            echo '--- notifications stream length ---'
+            docker exec "$REDIS_CONTAINER" redis-cli XLEN dhole.notifications.events || true
+            echo '--- notifications consumer groups ---'
+            docker exec "$REDIS_CONTAINER" redis-cli XINFO GROUPS dhole.notifications.events || true
+          else
+            echo 'REDIS_CONTAINER_NOT_FOUND'
+          fi
+
+          PG_CONTAINER=$(docker ps --format '{{.Names}}' | grep -Ei '(^|[-_])postgres([-_]|$)' | head -n 1)
+          if [ -n "$PG_CONTAINER" ]; then
+            echo "=== POSTGRES ($PG_CONTAINER) ==="
+            docker exec "$PG_CONTAINER" sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select table_schema||\047.\047||table_name from information_schema.tables where table_name like \047notification%\047 order by 1;"' || true
+            echo '--- recent notification type counts ---'
+            docker exec "$PG_CONTAINER" sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select \"NotificationType\", count(*) from notification_messages group by 1 order by count(*) desc limit 20;"' || true
+            echo '--- seller request notification count ---'
+            docker exec "$PG_CONTAINER" sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select count(*) from notification_messages where \"NotificationType\"=\047pricing.rate-request.created\047;"' || true
+            echo '--- pricing outbox seller request notification count ---'
+            docker exec "$PG_CONTAINER" sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select count(*) from outbox_messages where \"PayloadJson\" like \047%pricing.rate-request.created%\047;"' || true
+          else
+            echo 'POSTGRES_CONTAINER_NOT_FOUND'
+          fi
