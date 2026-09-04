@@ -12,24 +12,33 @@ jobs:
     runs-on: [self-hosted, linux, x64, dhole]
     steps:
       - uses: actions/checkout@v4
-      - name: Confirm seller request realtime delivery
+      - name: Inspect seller notification producer and recipients
         shell: bash
         run: |
           set +e
-          echo '=== PRICING WORKER ==='
-          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}} started={{.State.StartedAt}}' dhole-pricing-workers-1 2>&1 || true
-          docker logs --since 10m --tail 300 dhole-pricing-workers-1 2>&1 | grep -Ei 'Outbox processed|failed|exception|rate-request|notification' | tail -n 150 || true
 
-          echo '=== NOTIFICATION TYPE COUNTS ==='
-          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select notification_type, count(*) from notifications.notification_messages group by notification_type order by notification_type;"' 2>&1 || true
+          echo '=== PRICING OUTBOX SELLER NOTIFICATIONS ==='
+          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select event_name, status, count(*) from pricing.outbox_messages where payload_json like '\''%pricing.rate-request.created%'\'' group by event_name,status order by event_name,status;"' 2>&1 || true
 
-          echo '=== DELIVERY ATTEMPT STATUS COUNTS ==='
-          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select status, count(*) from notifications.notification_delivery_attempts group by status order by status;"' 2>&1 || true
+          echo '=== PRICING RATE REQUEST COUNT ==='
+          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select count(*) from pricing.\"RateRequests\";"' 2>&1 || true
 
-          echo '=== PRICING OUTBOX STATUS COUNTS ==='
-          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select status, count(*) from pricing.outbox_messages group by status order by status;"' 2>&1 || true
+          echo '=== AUTH PRICING RECIPIENT COUNT FROM PRICING API ==='
+          docker exec dhole-pricing-api-1 sh -lc '
+            KEY="${Auth__Client__InternalServiceKey:-}"
+            HEADER="${Auth__Client__InternalServiceKeyHeader:-X-Dhole-Service-Key}"
+            BASE="${Auth__Client__BaseAddress:-http://auth-api:8080}"
+            if [ -z "$KEY" ]; then echo SERVICE_KEY_MISSING; exit 0; fi
+            BODY="$(curl --silent --show-error --max-time 10 -H "$HEADER: $KEY" "$BASE/api/internal/auth/pricing-notification-recipients")"
+            printf "%s" "$BODY" | tr "{" "\n" | grep -c '"'"'userId'"'"' || true
+          ' 2>&1 || true
 
-          echo '=== SIGNALR TRANSPORT ==='
+          echo '=== NOTIFICATIONS MESSAGES TOTAL ==='
+          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select count(*) from notifications.notification_messages;"' 2>&1 || true
+
+          echo '=== CURRENT TRANSPORT ==='
+          docker inspect --format='pricing_worker={{.State.Status}} restarts={{.RestartCount}}' dhole-pricing-workers-1 2>&1 || true
+          docker inspect --format='notifications_worker={{.State.Status}} restarts={{.RestartCount}}' dhole-notifications-workers-1 2>&1 || true
           docker exec redis redis-cli PUBSUB NUMSUB dhole.notifications.signalr 2>&1 || true
+          docker exec redis redis-cli XLEN dhole.notifications.events 2>&1 || true
           docker exec redis redis-cli XINFO GROUPS dhole.notifications.events 2>&1 || true
-          docker logs --since 2h --tail 1800 dhole-api-gateway-1 2>&1 | grep -Ei 'Gateway forwarding WebSocket /api/notifications/hub|POST /api/notifications/hub/negotiate (200|401)' | tail -n 80 || true
