@@ -12,33 +12,45 @@ jobs:
     runs-on: [self-hosted, linux, x64, dhole]
     steps:
       - uses: actions/checkout@v4
-      - name: Inspect seller notification producer and recipients
+      - name: Inspect staging seller realtime pipeline
         shell: bash
         run: |
           set +e
+          PG=dhole-staging-infra-postgres-1
+          REDIS=dhole-staging-infra-redis-1
 
-          echo '=== PRICING OUTBOX SELLER NOTIFICATIONS ==='
-          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select event_name, status, count(*) from pricing.outbox_messages where payload_json like '\''%pricing.rate-request.created%'\'' group by event_name,status order by event_name,status;"' 2>&1 || true
+          echo '=== STAGING RATE REQUESTS ==='
+          docker exec "$PG" sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select count(*) from pricing.\"RateRequests\";"' 2>&1 || true
 
-          echo '=== PRICING RATE REQUEST COUNT ==='
-          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select count(*) from pricing.\"RateRequests\";"' 2>&1 || true
+          echo '=== STAGING SELLER NOTIFICATION OUTBOX ==='
+          docker exec "$PG" sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select event_name,status,count(*) from pricing.outbox_messages where payload_json::text like '\''%pricing.rate-request.created%'\'' group by event_name,status order by event_name,status;"' 2>&1 || true
 
-          echo '=== AUTH PRICING RECIPIENT COUNT FROM PRICING API ==='
-          docker exec dhole-pricing-api-1 sh -lc '
+          echo '=== STAGING OUTBOX STATUS ==='
+          docker exec "$PG" sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select status,count(*) from pricing.outbox_messages group by status order by status;"' 2>&1 || true
+
+          echo '=== STAGING PRICING RECIPIENTS ==='
+          docker exec dhole-staging-pricing-api-1 sh -lc '
             KEY="${Auth__Client__InternalServiceKey:-}"
             HEADER="${Auth__Client__InternalServiceKeyHeader:-X-Dhole-Service-Key}"
             BASE="${Auth__Client__BaseAddress:-http://auth-api:8080}"
             if [ -z "$KEY" ]; then echo SERVICE_KEY_MISSING; exit 0; fi
             BODY="$(curl --silent --show-error --max-time 10 -H "$HEADER: $KEY" "$BASE/api/internal/auth/pricing-notification-recipients")"
-            printf "%s" "$BODY" | tr "{" "\n" | grep -c '"'"'userId'"'"' || true
+            printf "%s" "$BODY" | tr "{" "\n" | grep -c userId || true
           ' 2>&1 || true
 
-          echo '=== NOTIFICATIONS MESSAGES TOTAL ==='
-          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select count(*) from notifications.notification_messages;"' 2>&1 || true
+          echo '=== STAGING NOTIFICATION MESSAGES ==='
+          docker exec "$PG" sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select notification_type,count(*) from notifications.notification_messages group by notification_type order by notification_type;"' 2>&1 || true
 
-          echo '=== CURRENT TRANSPORT ==='
-          docker inspect --format='pricing_worker={{.State.Status}} restarts={{.RestartCount}}' dhole-pricing-workers-1 2>&1 || true
-          docker inspect --format='notifications_worker={{.State.Status}} restarts={{.RestartCount}}' dhole-notifications-workers-1 2>&1 || true
-          docker exec redis redis-cli PUBSUB NUMSUB dhole.notifications.signalr 2>&1 || true
-          docker exec redis redis-cli XLEN dhole.notifications.events 2>&1 || true
-          docker exec redis redis-cli XINFO GROUPS dhole.notifications.events 2>&1 || true
+          echo '=== STAGING REDIS NOTIFICATION STREAM ==='
+          docker exec "$REDIS" redis-cli PUBSUB NUMSUB dhole.notifications.signalr 2>&1 || true
+          docker exec "$REDIS" redis-cli XLEN dhole.notifications.events 2>&1 || true
+          docker exec "$REDIS" redis-cli XINFO GROUPS dhole.notifications.events 2>&1 || true
+
+          echo '=== STAGING WORKERS ==='
+          docker inspect --format='pricing={{.State.Status}} restarts={{.RestartCount}}' dhole-staging-pricing-workers-1 2>&1 || true
+          docker inspect --format='notifications={{.State.Status}} restarts={{.RestartCount}}' dhole-staging-notifications-workers-1 2>&1 || true
+          docker logs --since 15m --tail 700 dhole-staging-pricing-workers-1 2>&1 | grep -Ei 'Outbox processed|failed|exception|notification|rate-request' | tail -n 250 || true
+          docker logs --since 15m --tail 700 dhole-staging-notifications-workers-1 2>&1 | grep -Ei 'notification|delivery|stream|failed|exception|rate-request' | tail -n 250 || true
+
+          echo '=== STAGING SIGNALR ==='
+          docker logs --since 2h --tail 1500 dhole-staging-notifications-api-1 2>&1 | grep -Ei '/api/notifications/hub|signalr|websocket| 101 | 200 | 401 ' | tail -n 120 || true
