@@ -13,34 +13,40 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Inspect exact staging and production realtime pipeline
+      - name: Verify repaired production realtime pipeline
         shell: bash
         run: |
           set +e
-          inspect_worker() {
-            c="$1"
-            echo "=== WORKER $c ==="
-            docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' "$c" 2>&1 || true
-            docker logs --since 15m --tail 250 "$c" 2>&1 | grep -Ei 'error|exception|fail|outbox|notification|redis|started|stopping' | tail -n 150 || true
-          }
 
-          inspect_worker dhole-staging-pricing-workers-1
-          inspect_worker dhole-pricing-workers-1
-          inspect_worker dhole-notifications-workers-1
+          echo '=== PRODUCTION PRICING WORKER ==='
+          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' dhole-pricing-workers-1 2>&1 || true
+          docker logs --since 10m --tail 500 dhole-pricing-workers-1 2>&1 | grep -Ei 'application started|error|exception|fail|outbox|notification|redis|rate-request' | tail -n 250 || true
 
-          echo '=== PRODUCTION NOTIFICATIONS API ==='
-          docker inspect --format='state={{.State.Status}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}} restartCount={{.RestartCount}}' dhole-notifications-api-1 2>&1 || true
-          docker logs --since 15m --tail 400 dhole-notifications-api-1 2>&1 | grep -Ei 'signalr|websocket|hub|notification|redis|error|exception|fail|abort|401|403' | tail -n 200 || true
+          echo '=== STAGING PRICING WORKER ==='
+          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}} started={{.State.StartedAt}}' dhole-staging-pricing-workers-1 2>&1 || true
+
+          echo '=== PRODUCTION NOTIFICATIONS WORKER ==='
+          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}}' dhole-notifications-workers-1 2>&1 || true
+          docker logs --since 10m --tail 500 dhole-notifications-workers-1 2>&1 | grep -Ei 'notification|rate-request|delivery|redis|stream|error|exception|fail' | tail -n 250 || true
+
+          echo '=== PRODUCTION SIGNALR API CONNECTIONS ==='
+          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}}' dhole-notifications-api-1 2>&1 || true
+          docker logs --since 2h --tail 2500 dhole-notifications-api-1 2>&1 | grep -Ei '/api/notifications/hub|signalr|websocket|abort|401|403|unauthor' | tail -n 350 || true
+
+          echo '=== PRODUCTION GATEWAY SIGNALR ==='
+          docker logs --since 2h --tail 2500 dhole-api-gateway-1 2>&1 | grep -Ei 'notifications/hub|signalr|websocket|101|401|403' | tail -n 350 || true
 
           echo '=== PRODUCTION REDIS ==='
-          docker exec dhole-redis-1 redis-cli PING 2>&1 || true
-          docker exec dhole-redis-1 redis-cli PUBSUB NUMSUB dhole.notifications.signalr 2>&1 || true
-          docker exec dhole-redis-1 redis-cli XLEN dhole.notifications.events 2>&1 || true
-          docker exec dhole-redis-1 redis-cli XINFO GROUPS dhole.notifications.events 2>&1 || true
-          docker exec dhole-redis-1 redis-cli XLEN dhole.pricing.events 2>&1 || true
-          docker exec dhole-redis-1 redis-cli XINFO GROUPS dhole.pricing.events 2>&1 || true
+          docker exec redis redis-cli PING 2>&1 || true
+          echo '-- pubsub --'
+          docker exec redis redis-cli PUBSUB NUMSUB dhole.notifications.signalr 2>&1 || true
+          echo '-- notifications stream --'
+          docker exec redis redis-cli XLEN dhole.notifications.events 2>&1 || true
+          docker exec redis redis-cli XINFO GROUPS dhole.notifications.events 2>&1 || true
+          echo '-- pricing stream --'
+          docker exec redis redis-cli XLEN dhole.pricing.events 2>&1 || true
+          docker exec redis redis-cli XINFO GROUPS dhole.pricing.events 2>&1 || true
 
-          echo '=== PRODUCTION DB COUNTS ==='
-          docker exec dhole-postgres-1 sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select status, count(*) from outbox_messages where payload_json like '\''%pricing.rate-request.created%'\'' group by status order by status;"' 2>&1 || true
-          docker exec dhole-postgres-1 sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select notification_type, count(*) from notification_messages where notification_type='\''pricing.rate-request.created'\'' group by notification_type;"' 2>&1 || true
-          docker exec dhole-postgres-1 sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select status, count(*) from notification_delivery_attempts group by status order by status;"' 2>&1 || true
+          echo '=== PRODUCTION DATABASE TABLE LOCATIONS ==='
+          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select table_schema||chr(46)||table_name from information_schema.tables order by 1;"' 2>&1 | grep -Ei 'outbox|rate_request|rate_requests' || true
+          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select table_schema||chr(46)||table_name from information_schema.tables order by 1;"' 2>&1 | grep -Ei 'notification|delivery|recipient' || true
