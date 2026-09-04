@@ -12,41 +12,24 @@ jobs:
     runs-on: [self-hosted, linux, x64, dhole]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Verify repaired production realtime pipeline
+      - name: Confirm seller request realtime delivery
         shell: bash
         run: |
           set +e
+          echo '=== PRICING WORKER ==='
+          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}} started={{.State.StartedAt}}' dhole-pricing-workers-1 2>&1 || true
+          docker logs --since 10m --tail 300 dhole-pricing-workers-1 2>&1 | grep -Ei 'Outbox processed|failed|exception|rate-request|notification' | tail -n 150 || true
 
-          echo '=== PRODUCTION PRICING WORKER ==='
-          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}} started={{.State.StartedAt}} finished={{.State.FinishedAt}}' dhole-pricing-workers-1 2>&1 || true
-          docker logs --since 10m --tail 500 dhole-pricing-workers-1 2>&1 | grep -Ei 'application started|error|exception|fail|outbox|notification|redis|rate-request' | tail -n 250 || true
+          echo '=== NOTIFICATION TYPE COUNTS ==='
+          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select notification_type, count(*) from notifications.notification_messages group by notification_type order by notification_type;"' 2>&1 || true
 
-          echo '=== STAGING PRICING WORKER ==='
-          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}} started={{.State.StartedAt}}' dhole-staging-pricing-workers-1 2>&1 || true
+          echo '=== DELIVERY ATTEMPT STATUS COUNTS ==='
+          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select status, count(*) from notifications.notification_delivery_attempts group by status order by status;"' 2>&1 || true
 
-          echo '=== PRODUCTION NOTIFICATIONS WORKER ==='
-          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}}' dhole-notifications-workers-1 2>&1 || true
-          docker logs --since 10m --tail 500 dhole-notifications-workers-1 2>&1 | grep -Ei 'notification|rate-request|delivery|redis|stream|error|exception|fail' | tail -n 250 || true
+          echo '=== PRICING OUTBOX STATUS COUNTS ==='
+          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select status, count(*) from pricing.outbox_messages group by status order by status;"' 2>&1 || true
 
-          echo '=== PRODUCTION SIGNALR API CONNECTIONS ==='
-          docker inspect --format='state={{.State.Status}} restartCount={{.RestartCount}}' dhole-notifications-api-1 2>&1 || true
-          docker logs --since 2h --tail 2500 dhole-notifications-api-1 2>&1 | grep -Ei '/api/notifications/hub|signalr|websocket|abort|401|403|unauthor' | tail -n 350 || true
-
-          echo '=== PRODUCTION GATEWAY SIGNALR ==='
-          docker logs --since 2h --tail 2500 dhole-api-gateway-1 2>&1 | grep -Ei 'notifications/hub|signalr|websocket|101|401|403' | tail -n 350 || true
-
-          echo '=== PRODUCTION REDIS ==='
-          docker exec redis redis-cli PING 2>&1 || true
-          echo '-- pubsub --'
+          echo '=== SIGNALR TRANSPORT ==='
           docker exec redis redis-cli PUBSUB NUMSUB dhole.notifications.signalr 2>&1 || true
-          echo '-- notifications stream --'
-          docker exec redis redis-cli XLEN dhole.notifications.events 2>&1 || true
           docker exec redis redis-cli XINFO GROUPS dhole.notifications.events 2>&1 || true
-          echo '-- pricing stream --'
-          docker exec redis redis-cli XLEN dhole.pricing.events 2>&1 || true
-          docker exec redis redis-cli XINFO GROUPS dhole.pricing.events 2>&1 || true
-
-          echo '=== PRODUCTION DATABASE TABLE LOCATIONS ==='
-          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_pricing -Atc "select table_schema||chr(46)||table_name from information_schema.tables order by 1;"' 2>&1 | grep -Ei 'outbox|rate_request|rate_requests' || true
-          docker exec postgres sh -lc 'psql -U "${POSTGRES_USER:-postgres}" -d dhole_notifications -Atc "select table_schema||chr(46)||table_name from information_schema.tables order by 1;"' 2>&1 | grep -Ei 'notification|delivery|recipient' || true
+          docker logs --since 2h --tail 1800 dhole-api-gateway-1 2>&1 | grep -Ei 'Gateway forwarding WebSocket /api/notifications/hub|POST /api/notifications/hub/negotiate (200|401)' | tail -n 80 || true
