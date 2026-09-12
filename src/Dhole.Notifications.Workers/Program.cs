@@ -32,6 +32,8 @@ builder.Services.AddWorkerInfrastructure(builder.Configuration);
 builder.Services.AddCustomCodeRedisStreams(builder.Configuration);
 builder.Services.AddCustomCodeRedisStreamConsumerBackgroundService();
 builder.Services.AddCustomCodeRedisStreamHandler<NotificationRequestedStreamHandler>();
+builder.Services.AddCustomCodeRedisStreamHandler<MeetingRequestedStreamHandler>();
+builder.Services.AddCustomCodeRedisStreamHandler<MeetingConfirmedStreamHandler>();
 builder.Services.AddHostedService<NotificationProcessingWorker>();
 
 var host = builder.Build();
