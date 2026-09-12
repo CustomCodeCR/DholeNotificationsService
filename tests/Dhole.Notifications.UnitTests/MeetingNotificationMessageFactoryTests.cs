@@ -1,3 +1,4 @@
+using System.Net;
 using Dhole.Notifications.Application.Meetings;
 
 namespace Dhole.Notifications.UnitTests;
@@ -14,9 +15,9 @@ public sealed class MeetingNotificationMessageFactoryTests
 
         Assert.AreEqual("Email", message.Channel);
         Assert.AreEqual("marketing.meeting.requested", message.NotificationType);
-        Assert.AreEqual(1, message.Recipients.Count);
+        Assert.HasCount(1, message.Recipients);
         Assert.AreEqual("marketing@example.com", message.Recipients.Single().Address);
-        StringAssert.Contains(message.Body!, "Cotización");
+        StringAssert.Contains(WebUtility.HtmlDecode(message.Body!), "Cotización");
     }
 
     [TestMethod]
