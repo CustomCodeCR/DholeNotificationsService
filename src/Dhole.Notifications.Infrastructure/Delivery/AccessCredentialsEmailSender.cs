@@ -75,7 +75,7 @@ public sealed class AccessCredentialsEmailSender(
 
     private string BuildBody(SendAccessCredentialsEmailRequest request)
     {
-        var userName = WebUtility.HtmlEncode(request.UserName.Trim());
+        var loginEmail = WebUtility.HtmlEncode(request.Email.Trim());
         var temporaryPassword = WebUtility.HtmlEncode(request.TemporaryPassword);
         var accessUrl = WebUtility.HtmlEncode(_credentialsOptions.AccessUrl.Trim());
         var supportEmail = WebUtility.HtmlEncode(_credentialsOptions.SupportEmail.Trim());
@@ -86,7 +86,7 @@ public sealed class AccessCredentialsEmailSender(
 <p>Le comparto sus credenciales de acceso y el enlace para ingresar al sistema:</p>
 
 <p>
-<strong>Usuario:</strong> {userName}<br />
+<strong>Usuario:</strong> {loginEmail}<br />
 <strong>Contraseña:</strong> {temporaryPassword}<br />
 <strong>Link de acceso:</strong> <a href="{accessUrl}">{accessUrl}</a>
 </p>
