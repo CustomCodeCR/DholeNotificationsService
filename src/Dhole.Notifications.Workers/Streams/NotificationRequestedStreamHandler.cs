@@ -42,7 +42,7 @@ internal sealed class NotificationRequestedStreamHandler(
 
             DateTime? scheduled = null;
             if (DateTime.TryParse(GetString(root, "scheduledForUtc"), out var scheduledValue)) scheduled = scheduledValue.ToUniversalTime();
-            var payloadJson = TryProperty(root, "payload", out var payload) ? payload.GetRawText() : (GetString(root, "payloadJson") ?? "{}");
+            var payloadJson = BuildPayloadJson(root);
 
             await notifications.CreateMessageAsync(new CreateNotificationMessageRequest(
                 GetString(root, "notificationType") ?? "generic",
@@ -62,6 +62,45 @@ internal sealed class NotificationRequestedStreamHandler(
             logger.LogError(ex, "Could not create notification from Redis stream message {MessageId}.", envelope.MessageId);
             throw;
         }
+    }
+
+    private static string BuildPayloadJson(JsonElement root)
+    {
+        var payloadJson = TryProperty(root, "payload", out var payload)
+            ? payload.GetRawText()
+            : (GetString(root, "payloadJson") ?? "{}");
+
+        var hasAttachments =
+            TryProperty(root, "attachments", out var attachments)
+            && attachments.ValueKind == JsonValueKind.Array;
+        var hasAttachment =
+            TryProperty(root, "attachment", out var attachment)
+            && attachment.ValueKind == JsonValueKind.Object;
+
+        // Los productores actuales colocan los adjuntos dentro de payload.
+        // También aceptamos attachment/attachments en la raíz del evento para no
+        // descartarlos al convertir el evento de Redis en NotificationMessage.
+        if (!hasAttachments && !hasAttachment)
+            return payloadJson;
+
+        using var payloadDocument = JsonDocument.Parse(payloadJson);
+        if (payloadDocument.RootElement.ValueKind != JsonValueKind.Object)
+        {
+            throw new InvalidOperationException(
+                "Notification payload must be a JSON object when attachments are provided."
+            );
+        }
+
+        var merged = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        foreach (var property in payloadDocument.RootElement.EnumerateObject())
+            merged[property.Name] = property.Value.Clone();
+
+        if (hasAttachments)
+            merged["attachments"] = attachments.Clone();
+        if (hasAttachment)
+            merged["attachment"] = attachment.Clone();
+
+        return JsonSerializer.Serialize(merged);
     }
 
     private static bool TryProperty(JsonElement element, string name, out JsonElement value)
