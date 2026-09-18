@@ -39,6 +39,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddCustomCodeRedis(configuration);
         services.AddCustomCodeMongo(configuration);
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
+        services.Configure<AccessCredentialsEmailOptions>(configuration.GetSection(AccessCredentialsEmailOptions.SectionName));
         services.AddScoped<INotificationTemplateCache, NotificationTemplateCache>();
         services.AddScoped<INotificationPendingQueue, NotificationPendingQueue>();
         services.AddScoped<INotificationDocumentStore, NotificationDocumentStore>();
@@ -46,6 +47,7 @@ public static class InfrastructureServiceCollectionExtensions
         services.AddSingleton<SystemNotificationRealtimeBus>();
         services.AddScoped<INotificationDeliveryChannel, SystemNotificationDeliveryChannel>();
         services.AddScoped<INotificationDeliveryChannel, EmailNotificationDeliveryChannel>();
+        services.AddScoped<IAccessCredentialsEmailSender, AccessCredentialsEmailSender>();
         services.AddSingleton<INotificationDeliveryChannel>(new FutureNotificationDeliveryChannel(NotificationChannel.WhatsAppFuture));
         services.AddSingleton<INotificationDeliveryChannel>(new FutureNotificationDeliveryChannel(NotificationChannel.SmsFuture));
         services.AddSingleton<INotificationDeliveryChannel>(new FutureNotificationDeliveryChannel(NotificationChannel.WebhookFuture));
