@@ -6,4 +6,5 @@ internal static class NotificationsScopeNames
     public const string MessagesView = "notifications.messages.view";
     public const string TemplatesManage = "notifications.templates.manage";
     public const string HistoryView = "notifications.history.view";
+    public const string UsersSendCredentials = "auth.users.send-credentials";
 }
