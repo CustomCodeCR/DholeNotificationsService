@@ -18,6 +18,26 @@ internal static class NotificationMessageEndpoints
             { return Results.BadRequest(new { code = "notifications.message.invalid", message = ex.Message }); }
         }).RequireScope(NotificationsScopeNames.MessagesCreate);
 
+        group.MapPost("/access-credentials", async (
+            SendAccessCredentialsEmailRequest request,
+            IAccessCredentialsEmailSender sender,
+            CancellationToken ct) =>
+        {
+            try
+            {
+                await sender.SendAsync(request, ct);
+                return Results.NoContent();
+            }
+            catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.Net.Mail.SmtpException)
+            {
+                return Results.BadRequest(new
+                {
+                    code = "notifications.access_credentials.invalid",
+                    message = ex.Message,
+                });
+            }
+        }).RequireScope(NotificationsScopeNames.UsersSendCredentials);
+
         group.MapGet("/", async (int pageNumber, int pageSize, string? search, string? status, string? channel, INotificationApplicationService service, CancellationToken ct)
             => Results.Ok(await service.BrowseMessagesAsync(pageNumber, pageSize, search, status, channel, ct)))
             .RequireScope(NotificationsScopeNames.MessagesView);
