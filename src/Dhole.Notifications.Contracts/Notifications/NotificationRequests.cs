@@ -38,3 +38,10 @@ public sealed record CreateNotificationMessageRequest(
     DateTime? ScheduledForUtc,
     int MaxAttempts,
     IReadOnlyCollection<NotificationRecipientRequest> Recipients);
+
+public sealed record SendAccessCredentialsEmailRequest(
+    Guid UserId,
+    string UserName,
+    string Email,
+    string DisplayName,
+    string TemporaryPassword);
