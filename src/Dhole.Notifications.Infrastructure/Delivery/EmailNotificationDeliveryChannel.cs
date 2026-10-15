@@ -67,6 +67,7 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
 
         using var document = JsonDocument.Parse(payloadJson);
         var root = document.RootElement;
+        AddCcRecipients(mail, root);
 
         if (TryGet(root, "attachments", out var attachments) && attachments.ValueKind == JsonValueKind.Array)
         {
@@ -85,6 +86,28 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
 
         if (TryGet(root, "attachment", out var singleAttachment) && singleAttachment.ValueKind == JsonValueKind.Object)
             AddAttachment(mail, singleAttachment);
+    }
+
+    private static void AddCcRecipients(MailMessage mail, JsonElement payload)
+    {
+        if (!TryGet(payload, "cc", out var cc) || cc.ValueKind == JsonValueKind.Null)
+            return;
+
+        if (cc.ValueKind != JsonValueKind.Array)
+            throw new InvalidDataException("Email cc payload must be an array of addresses.");
+
+        foreach (var item in cc.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String || string.IsNullOrWhiteSpace(item.GetString()))
+                throw new InvalidDataException("Email cc recipient must be a non-empty address.");
+
+            var recipient = new MailAddress(item.GetString()!.Trim());
+            if (mail.To.Any(address => address.Address.Equals(recipient.Address, StringComparison.OrdinalIgnoreCase))
+                || mail.CC.Any(address => address.Address.Equals(recipient.Address, StringComparison.OrdinalIgnoreCase)))
+                continue;
+
+            mail.CC.Add(recipient);
+        }
     }
 
     private static void AddAttachment(MailMessage mail, JsonElement element)
