@@ -13,6 +13,8 @@ internal static class NotificationMessageEndpoints
 
         group.MapPost("/", async (CreateNotificationMessageRequest request, INotificationApplicationService service, HttpContext context, CancellationToken ct) =>
         {
+            // Only the trusted Redis consumer may supply a deterministic CRM event ID.
+            if (request.IdempotencyId.HasValue) return Results.BadRequest(new { code = "notifications.message.reserved_id" });
             try { return Results.Ok(await service.CreateMessageAsync(request, context.GetCurrentUserId(), ct)); }
             catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.Text.Json.JsonException)
             { return Results.BadRequest(new { code = "notifications.message.invalid", message = ex.Message }); }
