@@ -80,6 +80,11 @@ public sealed class NotificationApplicationService(
 
     public async Task<NotificationMessageDto> CreateMessageAsync(CreateNotificationMessageRequest request, Guid? actorUserId, CancellationToken cancellationToken = default)
     {
+        if (request.IdempotencyId is { } existingId)
+        {
+            var existing = await repository.GetMessageByIdAsync(existingId, cancellationToken);
+            if (existing is not null) return existing.ToDto();
+        }
         var channel = ParseChannel(request.Channel);
         if (request.Recipients is null || request.Recipients.Count == 0)
             throw new InvalidOperationException("At least one recipient is required.");
@@ -108,12 +113,18 @@ public sealed class NotificationApplicationService(
 
         var message = NotificationMessage.Create(request.NotificationType, request.TemplateCode, channel,
             request.EntityType, request.EntityId, request.Subject, request.Body, payloadJson,
-            request.ScheduledForUtc?.ToUniversalTime(), request.MaxAttempts <= 0 ? 3 : request.MaxAttempts, actorUserId);
+            request.ScheduledForUtc?.ToUniversalTime(), request.MaxAttempts <= 0 ? 3 : request.MaxAttempts, actorUserId, request.IdempotencyId);
         foreach (var recipient in request.Recipients)
             message.AddRecipient(recipient.UserId, recipient.Address ?? string.Empty, recipient.DisplayName);
 
         await repository.AddMessageAsync(message, cancellationToken);
-        await unitOfWork.SaveChangesAsync(cancellationToken);
+        try { await unitOfWork.SaveChangesAsync(cancellationToken); }
+        catch (Microsoft.EntityFrameworkCore.DbUpdateException) when (request.IdempotencyId.HasValue)
+        {
+            var duplicate = await repository.GetMessageByIdAsync(request.IdempotencyId.Value, cancellationToken);
+            if (duplicate is not null) return duplicate.ToDto();
+            throw;
+        }
         await documentStore.SavePayloadAsync(message.Id, message.NotificationType, payloadJson, message.CreatedAtUtc, cancellationToken);
         await pendingQueue.EnqueueAsync(message.Id, message.ScheduledForUtc ?? DateTime.UtcNow, cancellationToken);
         return message.ToDto();

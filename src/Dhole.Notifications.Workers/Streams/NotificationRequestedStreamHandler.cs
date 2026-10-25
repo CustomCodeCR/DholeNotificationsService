@@ -44,8 +44,11 @@ internal sealed class NotificationRequestedStreamHandler(
             if (DateTime.TryParse(GetString(root, "scheduledForUtc"), out var scheduledValue)) scheduled = scheduledValue.ToUniversalTime();
             var payloadJson = BuildPayloadJson(root);
 
+            var type = GetString(root,"notificationType") ?? "generic";
+            Guid? deterministicId = type.StartsWith("crm.",StringComparison.OrdinalIgnoreCase) &&
+                Guid.TryParse(GetString(root,"eventId"),out var crmId) ? crmId : null;
             await notifications.CreateMessageAsync(new CreateNotificationMessageRequest(
-                GetString(root, "notificationType") ?? "generic",
+                type,
                 GetString(root, "templateCode"),
                 GetString(root, "channel") ?? "System",
                 GetString(root, "entityType"),
@@ -55,7 +58,7 @@ internal sealed class NotificationRequestedStreamHandler(
                 payloadJson,
                 scheduled,
                 GetInt(root, "maxAttempts") ?? 3,
-                recipients), null, cancellationToken);
+                recipients, deterministicId), null, cancellationToken);
         }
         catch (Exception ex)
         {

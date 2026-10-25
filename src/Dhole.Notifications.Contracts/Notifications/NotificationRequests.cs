@@ -37,7 +37,8 @@ public sealed record CreateNotificationMessageRequest(
     string? PayloadJson,
     DateTime? ScheduledForUtc,
     int MaxAttempts,
-    IReadOnlyCollection<NotificationRecipientRequest> Recipients);
+    IReadOnlyCollection<NotificationRecipientRequest> Recipients,
+    Guid? IdempotencyId = null);
 
 public sealed record SendAccessCredentialsEmailRequest(
     Guid UserId,

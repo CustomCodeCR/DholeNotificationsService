@@ -74,10 +74,11 @@ public sealed class NotificationMessage : SoftDeletableAggregateRoot<Guid>
         string payloadJson,
         DateTime? scheduledForUtc,
         int maxAttempts = 3,
-        Guid? createdBy = null)
+        Guid? createdBy = null,
+        Guid? idempotencyId = null)
     {
         if (string.IsNullOrWhiteSpace(notificationType)) throw new ArgumentException("Notification type is required.", nameof(notificationType));
-        return new NotificationMessage(Guid.NewGuid(), notificationType, templateCode, channel, entityType, entityId,
+        return new NotificationMessage(idempotencyId ?? Guid.NewGuid(), notificationType, templateCode, channel, entityType, entityId,
             subject, body, payloadJson, scheduledForUtc, maxAttempts, createdBy);
     }
 
