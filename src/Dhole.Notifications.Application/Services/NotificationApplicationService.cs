@@ -119,7 +119,7 @@ public sealed class NotificationApplicationService(
 
         await repository.AddMessageAsync(message, cancellationToken);
         try { await unitOfWork.SaveChangesAsync(cancellationToken); }
-        catch (Microsoft.EntityFrameworkCore.DbUpdateException) when (request.IdempotencyId.HasValue)
+        catch (Exception) when (request.IdempotencyId.HasValue)
         {
             var duplicate = await repository.GetMessageByIdAsync(request.IdempotencyId.Value, cancellationToken);
             if (duplicate is not null) return duplicate.ToDto();
