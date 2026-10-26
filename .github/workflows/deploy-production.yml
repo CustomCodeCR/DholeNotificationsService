@@ -43,10 +43,5 @@ jobs:
           set -euo pipefail
           docker compose --env-file "$DHOLE_ENV_FILE" -f "$COMPOSE_FILE" -p "$COMPOSE_PROJECT" up -d --no-deps --force-recreate --pull never notifications-api notifications-workers
           docker compose --env-file "$DHOLE_ENV_FILE" -f "$COMPOSE_FILE" -p "$COMPOSE_PROJECT" ps notifications-api notifications-workers
-      - name: Keep only master and develop branches
-        run: |
-          set -euo pipefail
-          git fetch --prune origin '+refs/heads/*:refs/remotes/origin/*'
-          while IFS= read -r branch; do case "$branch" in master|develop) continue ;; esac; git push origin --delete "$branch"; done < <(git for-each-ref --format='%(refname:strip=3)' refs/remotes/origin | grep -v '^HEAD$' || true)
       - name: Cleanup old images
         run: docker image prune -f
