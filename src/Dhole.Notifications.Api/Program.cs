@@ -1,4 +1,5 @@
 using Dhole.Notifications.Api.Hubs;
+using CustomCodeFramework.Redis.Abstractions;
 using Dhole.Notifications.Api.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using CustomCodeFramework.Api.DependencyInjection;
@@ -38,7 +39,18 @@ builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.Authenticatio
         if (string.IsNullOrWhiteSpace(context.Token)
             && context.HttpContext.Request.Path.StartsWithSegments("/api/notifications/hub"))
         {
-            context.Token = context.Request.Query["access_token"];
+            var ticket = context.Request.Query["ticket"].ToString();
+            if (!string.IsNullOrWhiteSpace(ticket))
+            {
+                var cache = context.HttpContext.RequestServices.GetRequiredService<ICacheService>();
+                context.Token = await HubAccessTicketStore.RedeemAsync(
+                    cache, ticket, context.HttpContext.RequestAborted);
+            }
+            else
+            {
+                // Allow older frontend versions during a rolling deployment.
+                context.Token = context.Request.Query["access_token"];
+            }
         }
     };
 });
@@ -57,6 +69,24 @@ app.MapNotificationTemplateEndpoints();
 app.MapNotificationMessageEndpoints();
 app.MapNotificationInboxEndpoints();
 app.MapHub<NotificationsHub>("/api/notifications/hub");
+
+// The long Auth JWT is sent only in an Authorization header. The browser uses
+// the returned opaque ticket for the WebSocket upgrade; it expires after 60s.
+app.MapPost("/api/notifications/hub/ticket", async (HttpContext context, ICacheService cache) =>
+{
+    var authorization = context.Request.Headers.Authorization.ToString();
+    if (!authorization.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        return Results.Unauthorized();
+
+    var accessToken = authorization["Bearer ".Length..].Trim();
+    if (string.IsNullOrWhiteSpace(accessToken))
+        return Results.Unauthorized();
+
+    var ticket = await HubAccessTicketStore.IssueAsync(
+        cache, accessToken, context.RequestAborted);
+    context.Response.Headers.CacheControl = "no-store";
+    return Results.Ok(new { ticket, expiresInSeconds = HubAccessTicketStore.LifetimeSeconds });
+}).RequireAuthorization();
 
 using (var scope = app.Services.CreateScope())
 {
