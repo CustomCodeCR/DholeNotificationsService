@@ -78,8 +78,11 @@ public sealed class NotificationApplicationService(
         return new(items.Select(x => x.ToDto()).ToArray(), pageNumber, pageSize, total);
     }
 
-    public async Task<NotificationMessageDto> CreateMessageAsync(CreateNotificationMessageRequest request, Guid? actorUserId, CancellationToken cancellationToken = default)
+    public async Task<NotificationMessageDto> CreateMessageAsync(CreateNotificationMessageRequest request, Guid? actorUserId, CancellationToken cancellationToken = default, Guid? fixedMessageId = null)
     {
+        if (fixedMessageId.HasValue && await repository.GetMessageByIdAsync(fixedMessageId.Value, cancellationToken) is { } existing)
+            return existing.ToDto();
+
         var channel = ParseChannel(request.Channel);
         if (request.Recipients is null || request.Recipients.Count == 0)
             throw new InvalidOperationException("At least one recipient is required.");
@@ -108,7 +111,7 @@ public sealed class NotificationApplicationService(
 
         var message = NotificationMessage.Create(request.NotificationType, request.TemplateCode, channel,
             request.EntityType, request.EntityId, request.Subject, request.Body, payloadJson,
-            request.ScheduledForUtc?.ToUniversalTime(), request.MaxAttempts <= 0 ? 3 : request.MaxAttempts, actorUserId);
+            request.ScheduledForUtc?.ToUniversalTime(), request.MaxAttempts <= 0 ? 3 : request.MaxAttempts, actorUserId, fixedMessageId);
         foreach (var recipient in request.Recipients)
             message.AddRecipient(recipient.UserId, recipient.Address ?? string.Empty, recipient.DisplayName);
 
@@ -155,17 +158,34 @@ public sealed class NotificationApplicationService(
         return new(items.Select(x => x.ToDto()).ToArray(), pageNumber, pageSize, total);
     }
 
+    private static readonly TimeSpan MaxLateDelivery = TimeSpan.FromHours(24);
+
     public async Task<int> ProcessPendingAsync(int batchSize, CancellationToken cancellationToken = default)
     {
-        var due = await repository.GetDueMessagesAsync(Math.Clamp(batchSize, 1, 200), DateTime.UtcNow, cancellationToken);
+        var dueIds = await repository.GetDueMessageIdsAsync(Math.Clamp(batchSize, 1, 200), DateTime.UtcNow, cancellationToken);
         var processed = 0;
-        foreach (var message in due)
+        foreach (var messageId in dueIds)
         {
             if (cancellationToken.IsCancellationRequested) break;
+            if (!await repository.TryClaimDueMessageAsync(messageId, DateTime.UtcNow, cancellationToken))
+                continue;
+
+            var message = await repository.GetMessageByIdAsync(messageId, cancellationToken);
+            if (message is null) continue;
             try
             {
-                message.MarkProcessing();
-                await unitOfWork.SaveChangesAsync(cancellationToken);
+                // No enviar backlog de notificaciones antiguas. Las programadas
+                // caducan 24 horas despues de su hora programada, no de su creacion.
+                var dueAt = message.ScheduledForUtc ?? message.CreatedAtUtc;
+                if (DateTime.UtcNow - dueAt > MaxLateDelivery)
+                {
+                    message.MarkTerminalFailed("notification_expired",
+                        "Message expired before delivery; stale notifications are not replayed.");
+                    await unitOfWork.SaveChangesAsync(cancellationToken);
+                    await pendingQueue.RemoveAsync(message.Id, cancellationToken);
+                    processed++;
+                    continue;
+                }
 
                 var rendered = await RenderAsync(message, cancellationToken);
                 message.SetRenderedContent(rendered.Subject, rendered.Body);
@@ -180,18 +200,15 @@ public sealed class NotificationApplicationService(
                     if (message.DeliveryAttempts.Any(x => x.NotificationRecipientId == recipient.Id && x.Succeeded)) continue;
                     var started = DateTime.UtcNow;
                     NotificationDeliveryResult result;
-                    try
-                    {
-                        result = await deliveryChannel.SendAsync(message, recipient, cancellationToken);
-                    }
-                    catch (Exception ex)
-                    {
-                        result = NotificationDeliveryResult.Failure(message.Channel.ToString(), "delivery_exception", ex.Message);
-                    }
+                    try { result = await deliveryChannel.SendAsync(message, recipient, cancellationToken); }
+                    catch (Exception ex) { result = NotificationDeliveryResult.Failure(message.Channel.ToString(), "delivery_exception", ex.Message); }
                     var attempt = NotificationDeliveryAttempt.Create(message.Id, recipient.Id, message.AttemptCount,
                         result.Succeeded, result.Provider, result.ProviderMessageId, result.ErrorCode, result.ErrorMessage,
                         started, DateTime.UtcNow);
                     message.AddDeliveryAttempt(attempt);
+                    // Confirmar cada destinatario inmediatamente para poder reanudar
+                    // sin repetir entregas ya confirmadas al caer un proceso.
+                    await unitOfWork.SaveChangesAsync(cancellationToken);
                     if (!result.Succeeded) failures.Add(result);
                 }
 

@@ -11,7 +11,7 @@ public interface INotificationApplicationService
     Task<NotificationTemplateDto?> GetTemplateAsync(Guid id, CancellationToken cancellationToken = default);
     Task<PagedNotificationResult<NotificationTemplateDto>> BrowseTemplatesAsync(int pageNumber, int pageSize, string? search, bool? isActive, CancellationToken cancellationToken = default);
 
-    Task<NotificationMessageDto> CreateMessageAsync(CreateNotificationMessageRequest request, Guid? actorUserId, CancellationToken cancellationToken = default);
+    Task<NotificationMessageDto> CreateMessageAsync(CreateNotificationMessageRequest request, Guid? actorUserId, CancellationToken cancellationToken = default, Guid? fixedMessageId = null);
     Task<NotificationMessageDto?> GetMessageAsync(Guid id, CancellationToken cancellationToken = default);
     Task<bool> CancelMessageAsync(Guid id, Guid? actorUserId, CancellationToken cancellationToken = default);
     Task<PagedNotificationResult<NotificationMessageDto>> BrowseMessagesAsync(int pageNumber, int pageSize, string? search, string? status, string? channel, CancellationToken cancellationToken = default);
