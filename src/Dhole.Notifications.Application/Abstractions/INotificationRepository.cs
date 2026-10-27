@@ -16,5 +16,6 @@ public interface INotificationRepository
     Task<(IReadOnlyCollection<NotificationMessage> Items, int Total)> BrowseMessagesAsync(int pageNumber, int pageSize, string? search, NotificationStatus? status, string? channel, CancellationToken cancellationToken = default);
     Task<(IReadOnlyCollection<NotificationMessage> Items, int Total)> BrowseByEntityAsync(string entityType, string entityId, int pageNumber, int pageSize, CancellationToken cancellationToken = default);
     Task<(IReadOnlyCollection<NotificationMessage> Items, int Total)> BrowseByRecipientAsync(string recipient, int pageNumber, int pageSize, CancellationToken cancellationToken = default);
-    Task<IReadOnlyCollection<NotificationMessage>> GetDueMessagesAsync(int batchSize, DateTime utcNow, CancellationToken cancellationToken = default);
+    Task<IReadOnlyCollection<Guid>> GetDueMessageIdsAsync(int batchSize, DateTime utcNow, CancellationToken cancellationToken = default);
+    Task<bool> TryClaimDueMessageAsync(Guid id, DateTime utcNow, CancellationToken cancellationToken = default);
 }

@@ -83,17 +83,32 @@ public sealed class NotificationRepository(ServiceDbContext dbContext) : INotifi
         return await PageMessageQuery(query, pageNumber, pageSize, cancellationToken);
     }
 
-    public async Task<IReadOnlyCollection<NotificationMessage>> GetDueMessagesAsync(int batchSize, DateTime utcNow, CancellationToken cancellationToken = default)
-    {
-        var ids = await dbContext.NotificationMessages
+    public async Task<IReadOnlyCollection<Guid>> GetDueMessageIdsAsync(int batchSize, DateTime utcNow, CancellationToken cancellationToken = default)
+        => await dbContext.NotificationMessages.AsNoTracking()
             .Where(x =>
-                (x.Status == NotificationStatus.Pending)
+                x.Status == NotificationStatus.Pending
                 || (x.Status == NotificationStatus.Scheduled && (!x.ScheduledForUtc.HasValue || x.ScheduledForUtc <= utcNow))
                 || (x.Status == NotificationStatus.Retrying && (!x.NextAttemptAtUtc.HasValue || x.NextAttemptAtUtc <= utcNow))
                 || (x.Status == NotificationStatus.Processing && x.ProcessingStartedAtUtc.HasValue && x.ProcessingStartedAtUtc <= utcNow.AddMinutes(-5)))
             .OrderBy(x => x.ScheduledForUtc ?? x.NextAttemptAtUtc ?? x.CreatedAtUtc)
             .Take(batchSize).Select(x => x.Id).ToListAsync(cancellationToken);
-        return await BaseMessageQuery().Where(x => ids.Contains(x.Id)).OrderBy(x => x.CreatedAtUtc).ToListAsync(cancellationToken);
+
+    // Una sola replica puede reclamar el mensaje: PostgreSQL actualiza solo si
+    // el estado sigue siendo elegible al momento del UPDATE.
+    public async Task<bool> TryClaimDueMessageAsync(Guid id, DateTime utcNow, CancellationToken cancellationToken = default)
+    {
+        var changed = await dbContext.NotificationMessages
+            .Where(x => x.Id == id && (
+                x.Status == NotificationStatus.Pending
+                || (x.Status == NotificationStatus.Scheduled && (!x.ScheduledForUtc.HasValue || x.ScheduledForUtc <= utcNow))
+                || (x.Status == NotificationStatus.Retrying && (!x.NextAttemptAtUtc.HasValue || x.NextAttemptAtUtc <= utcNow))
+                || (x.Status == NotificationStatus.Processing && x.ProcessingStartedAtUtc.HasValue && x.ProcessingStartedAtUtc <= utcNow.AddMinutes(-5))))
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(x => x.Status, NotificationStatus.Processing)
+                .SetProperty(x => x.ProcessingStartedAtUtc, (DateTime?)utcNow)
+                .SetProperty(x => x.NextAttemptAtUtc, (DateTime?)null)
+                .SetProperty(x => x.AttemptCount, x => x.AttemptCount + 1), cancellationToken);
+        return changed == 1;
     }
 
     private IQueryable<NotificationMessage> BaseMessageQuery()

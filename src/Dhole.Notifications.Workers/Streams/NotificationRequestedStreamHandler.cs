@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Microsoft.EntityFrameworkCore;
 using CustomCodeFramework.Redis.Streams.Abstractions;
 using CustomCodeFramework.Redis.Streams.Messages;
 using Dhole.Notifications.Application.Abstractions;
@@ -42,6 +43,11 @@ internal sealed class NotificationRequestedStreamHandler(
 
             DateTime? scheduled = null;
             if (DateTime.TryParse(GetString(root, "scheduledForUtc"), out var scheduledValue)) scheduled = scheduledValue.ToUniversalTime();
+            if (StreamNotificationSafety.IsStale(envelope, scheduled))
+            {
+                logger.LogWarning("Discarded stale Redis notification event {MessageId}.", envelope.MessageId);
+                return;
+            }
             var payloadJson = BuildPayloadJson(root);
 
             await notifications.CreateMessageAsync(new CreateNotificationMessageRequest(
@@ -55,7 +61,11 @@ internal sealed class NotificationRequestedStreamHandler(
                 payloadJson,
                 scheduled,
                 GetInt(root, "maxAttempts") ?? 3,
-                recipients), null, cancellationToken);
+                recipients), null, cancellationToken, StreamNotificationSafety.FixedMessageId(envelope));
+        }
+        catch (DbUpdateException ex) when (StreamNotificationSafety.IsDuplicateInsert(ex))
+        {
+            logger.LogInformation("Duplicate Redis notification event {MessageId} already exists.", envelope.MessageId);
         }
         catch (Exception ex)
         {
