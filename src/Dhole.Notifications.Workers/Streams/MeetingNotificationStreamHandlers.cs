@@ -34,10 +34,6 @@ internal sealed class MeetingRequestedStreamHandler(
         {
             logger.LogInformation("Duplicate meeting event {MessageId} already exists.", envelope.MessageId);
         }
-        catch (DbUpdateException exception) when (StreamNotificationSafety.IsDuplicateInsert(exception))
-        {
-            logger.LogInformation("Duplicate meeting confirmation event {MessageId} already exists.", envelope.MessageId);
-        }
         catch (Exception exception)
         {
             logger.LogError(exception, "Could not create Marketing meeting notification from Redis message {MessageId}.", envelope.MessageId);
@@ -63,6 +59,10 @@ internal sealed class MeetingConfirmedStreamHandler(
             }
             var request = MeetingNotificationMessageFactory.CreateConfirmed(envelope.PayloadJson);
             await notifications.CreateMessageAsync(request, null, cancellationToken, StreamNotificationSafety.FixedMessageId(envelope));
+        }
+        catch (DbUpdateException exception) when (StreamNotificationSafety.IsDuplicateInsert(exception))
+        {
+            logger.LogInformation("Duplicate meeting confirmation event {MessageId} already exists.", envelope.MessageId);
         }
         catch (Exception exception)
         {
