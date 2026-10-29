@@ -34,7 +34,7 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
 
         try
         {
-            AddAttachments(mail, message.PayloadJson);
+            AddAttachments(mail, message.PayloadJson, message.NotificationType);
         }
         catch (Exception ex) when (ex is JsonException or FormatException or InvalidDataException)
         {
@@ -60,14 +60,14 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
         return NotificationDeliveryResult.Success("SMTP", Guid.NewGuid().ToString("N"));
     }
 
-    private static void AddAttachments(MailMessage mail, string? payloadJson)
+    private static void AddAttachments(MailMessage mail, string? payloadJson, string notificationType)
     {
         if (string.IsNullOrWhiteSpace(payloadJson) || payloadJson.Trim() == "{}")
             return;
 
         using var document = JsonDocument.Parse(payloadJson);
         var root = document.RootElement;
-        AddCcRecipients(mail, root);
+        AddCcRecipients(mail, root, notificationType);
 
         if (TryGet(root, "attachments", out var attachments) && attachments.ValueKind == JsonValueKind.Array)
         {
@@ -88,7 +88,7 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
             AddAttachment(mail, singleAttachment);
     }
 
-    private static void AddCcRecipients(MailMessage mail, JsonElement payload)
+    private static void AddCcRecipients(MailMessage mail, JsonElement payload, string notificationType)
     {
         if (!TryGet(payload, "cc", out var cc) || cc.ValueKind == JsonValueKind.Null)
             return;
@@ -102,12 +102,35 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
                 throw new InvalidDataException("Email cc recipient must be a non-empty address.");
 
             var recipient = new MailAddress(item.GetString()!.Trim());
+            // Las notificaciones de tarifas ya en cola también deben respetar la
+            // exclusión del vendedor corporativo, incluso tras un reintento.
+            if (SuppressCorporatePricingCopy(notificationType, payload, recipient.Address))
+                continue;
+
             if (mail.To.Any(address => address.Address.Equals(recipient.Address, StringComparison.OrdinalIgnoreCase))
                 || mail.CC.Any(address => address.Address.Equals(recipient.Address, StringComparison.OrdinalIgnoreCase)))
                 continue;
 
             mail.CC.Add(recipient);
         }
+    }
+
+    private static bool SuppressCorporatePricingCopy(
+        string notificationType, JsonElement payload, string address)
+    {
+        if (!string.Equals(notificationType, "pricing.rate.sent-to-seller", StringComparison.OrdinalIgnoreCase)
+            || !string.Equals(address, "jmesen@castrofallas.com", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        var executiveName = GetString(payload, "sellerName");
+        if (string.IsNullOrWhiteSpace(executiveName))
+            return false;
+
+        var normalizedName = string.Join(" ", executiveName.Split(
+            (char[]?)null,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
+
+        return string.Equals(normalizedName, "Castro Fallas", StringComparison.OrdinalIgnoreCase);
     }
 
     private static void AddAttachment(MailMessage mail, JsonElement element)
