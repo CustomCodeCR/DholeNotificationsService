@@ -43,11 +43,12 @@ public sealed class SystemNotificationDeliveryChannel(SystemNotificationRealtime
 
         if (subscribers <= 0)
         {
-            return NotificationDeliveryResult.Failure(
-                "Dhole.SignalR",
-                "SystemRealtimeRelayUnavailable",
-                "El relay SignalR del API de Notifications no está disponible.",
-                retryable: true
+            // The System recipient already lives in the persistent inbox; Redis
+            // pub/sub has no active API subscribers right now. This is not a
+            // delivery failure and must not exhaust retry attempts offline.
+            return NotificationDeliveryResult.Success(
+                "Dhole.Inbox",
+                $"inbox:{message.Id:N}:{recipient.Id:N}"
             );
         }
 
