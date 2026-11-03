@@ -10,6 +10,7 @@ namespace Dhole.Notifications.Infrastructure.Delivery;
 
 public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> options) : INotificationDeliveryChannel
 {
+    private const int MaxCcRecipients = 25;
     private const int MaxAttachmentCount = 10;
     private const int MaxAttachmentBytes = 20 * 1024 * 1024;
 
@@ -107,6 +108,8 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
 
         if (cc.ValueKind != JsonValueKind.Array)
             throw new InvalidDataException("Email cc payload must be an array of addresses.");
+        if (cc.GetArrayLength() > MaxCcRecipients)
+            throw new InvalidDataException($"Email cc recipient count exceeds {MaxCcRecipients}.");
 
         foreach (var item in cc.EnumerateArray())
         {
