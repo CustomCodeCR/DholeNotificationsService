@@ -111,6 +111,23 @@ public sealed class NotificationRepository(ServiceDbContext dbContext) : INotifi
         return changed == 1;
     }
 
+    // Count attempts reserved BEFORE SMTP, not only successfully sent emails.
+    // This protects against a burst of independent messages for the same quote,
+    // including messages created before an Outbox replay was recognized.
+    public async Task<(int Total, int SameType)> CountRecentEmailDeliveriesAsync(
+        string entityType, string entityId, string notificationType,
+        DateTime sinceUtc, CancellationToken cancellationToken = default)
+    {
+        var query = dbContext.NotificationMessages.AsNoTracking()
+            .Where(x => x.Channel == NotificationChannel.Email
+                && x.EntityType == entityType && x.EntityId == entityId
+                && x.DeliveryAttempts.Any(a => a.StartedAtUtc >= sinceUtc
+                    && (a.Succeeded || a.ErrorCode == "email_delivery_started")));
+        var total = await query.CountAsync(cancellationToken);
+        var sameType = await query.CountAsync(x => x.NotificationType == notificationType, cancellationToken);
+        return (total, sameType);
+    }
+
     private IQueryable<NotificationMessage> BaseMessageQuery()
         => dbContext.NotificationMessages.Include(x => x.Recipients).Include(x => x.DeliveryAttempts);
 
