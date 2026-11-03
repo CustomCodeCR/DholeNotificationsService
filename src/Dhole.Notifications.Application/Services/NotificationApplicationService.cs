@@ -208,14 +208,25 @@ public sealed class NotificationApplicationService(
                     message.AddDeliveryAttempt(attempt);
                     // Confirmar cada destinatario inmediatamente para poder reanudar
                     // sin repetir entregas ya confirmadas al caer un proceso.
-                    await unitOfWork.SaveChangesAsync(cancellationToken);
+                    // Once SMTP confirms a send, persist the delivery receipt even
+                    // when the worker is shutting down. A cancelled save would
+                    // otherwise cause a second email on recovery.
+                    await unitOfWork.SaveChangesAsync(
+                        result.Succeeded ? CancellationToken.None : cancellationToken);
                     if (!result.Succeeded) failures.Add(result);
                 }
 
                 if (failures.Count == 0)
                 {
                     message.MarkSent();
-                    await pendingQueue.RemoveAsync(message.Id, cancellationToken);
+                    // PostgreSQL is the source of truth. Commit Sent before
+                    // best-effort Redis cache cleanup, or a cache failure could
+                    // incorrectly trigger a new delivery attempt.
+                    await unitOfWork.SaveChangesAsync(CancellationToken.None);
+                    try { await pendingQueue.RemoveAsync(message.Id, CancellationToken.None); }
+                    catch (Exception) { /* Expiring cache entry; DB state is Sent. */ }
+                    processed++;
+                    continue;
                 }
                 else
                 {
