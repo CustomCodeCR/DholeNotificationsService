@@ -55,9 +55,21 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
             smtp.Credentials = new NetworkCredential(_options.UserName, _options.Password);
 
         cancellationToken.ThrowIfCancellationRequested();
-        await smtp.SendMailAsync(mail);
-        cancellationToken.ThrowIfCancellationRequested();
-        return NotificationDeliveryResult.Success("SMTP", Guid.NewGuid().ToString("N"));
+        try
+        {
+            await smtp.SendMailAsync(mail);
+        }
+        catch (SmtpException ex)
+        {
+            // SMTP can fail after accepting DATA, so the delivery outcome is
+            // ambiguous. Automatically retrying may produce duplicate emails.
+            // Keep the message for manual reconciliation instead.
+            return NotificationDeliveryResult.Failure(
+                "SMTP", "smtp_delivery_unconfirmed", ex.Message, retryable: false);
+        }
+        // Cancellation after SMTP acceptance must not turn a successful send
+        // into an error that the worker tries again.
+        return NotificationDeliveryResult.Success("SMTP");
     }
 
     private static void AddAttachments(MailMessage mail, string? payloadJson, string notificationType)
