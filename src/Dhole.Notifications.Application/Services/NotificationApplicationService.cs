@@ -87,6 +87,18 @@ public sealed class NotificationApplicationService(
         if (request.Recipients is null || request.Recipients.Count == 0)
             throw new InvalidOperationException("At least one recipient is required.");
 
+        // A repeated address must never turn into multiple outbound SMTP calls.
+        // For in-app messages, deduplicate by user ID when one is available.
+        var recipients = request.Recipients
+            .GroupBy(x => channel == NotificationChannel.Email
+                ? (x.Address ?? string.Empty).Trim().ToLowerInvariant()
+                : x.UserId?.ToString() ?? (x.Address ?? string.Empty).Trim().ToLowerInvariant(),
+                StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToArray();
+        if (channel == NotificationChannel.Email && recipients.Length > 25)
+            throw new InvalidOperationException("Email notification exceeds the 25-recipient safety limit.");
+
         NotificationTemplateDto? template = null;
         if (!string.IsNullOrWhiteSpace(request.TemplateCode))
         {
@@ -112,7 +124,7 @@ public sealed class NotificationApplicationService(
         var message = NotificationMessage.Create(request.NotificationType, request.TemplateCode, channel,
             request.EntityType, request.EntityId, request.Subject, request.Body, payloadJson,
             request.ScheduledForUtc?.ToUniversalTime(), request.MaxAttempts <= 0 ? 3 : request.MaxAttempts, actorUserId, fixedMessageId);
-        foreach (var recipient in request.Recipients)
+        foreach (var recipient in recipients)
             message.AddRecipient(recipient.UserId, recipient.Address ?? string.Empty, recipient.DisplayName);
 
         await repository.AddMessageAsync(message, cancellationToken);
@@ -203,8 +215,7 @@ public sealed class NotificationApplicationService(
                     {
                         // A started SMTP delivery may already have been accepted by
                         // the provider when the worker crashed. Never auto-replay it.
-                        if (message.DeliveryAttempts.Any(x => x.NotificationRecipientId == recipient.Id
-                            && x.ErrorCode == "email_delivery_started"))
+                        if (EmailDeliverySafetyPolicy.HasUnconfirmedStart(message, recipient.Id))
                         {
                             failures.Add(NotificationDeliveryResult.Failure("SMTP",
                                 "email_delivery_unconfirmed",
@@ -221,7 +232,8 @@ public sealed class NotificationApplicationService(
                             var (total, sameType) = await repository.CountRecentEmailDeliveriesAsync(
                                 message.EntityType, message.EntityId, message.NotificationType,
                                 DateTime.UtcNow.AddHours(-1), cancellationToken);
-                            if (sameType >= 3 || total >= 10)
+                            if (EmailDeliverySafetyPolicy.ShouldBlockQuoteBurst(
+                                message.EntityType, message.EntityId, total, sameType))
                             {
                                 failures.Add(NotificationDeliveryResult.Failure("SMTP",
                                     "email_burst_limit",
@@ -239,7 +251,7 @@ public sealed class NotificationApplicationService(
                         // boundary. An interrupted send is unsafe to retry automatically.
                         var reservation = NotificationDeliveryAttempt.Create(message.Id,
                             recipient.Id, message.AttemptCount, false, "SMTP", null,
-                            "email_delivery_started",
+                            EmailDeliverySafetyPolicy.StartedAttemptCode,
                             "SMTP handoff started; outcome must be reconciled if interrupted.",
                             started, started);
                         message.AddDeliveryAttempt(reservation);
