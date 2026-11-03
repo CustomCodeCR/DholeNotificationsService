@@ -89,7 +89,7 @@ public sealed class NotificationRepository(ServiceDbContext dbContext) : INotifi
                 x.Status == NotificationStatus.Pending
                 || (x.Status == NotificationStatus.Scheduled && (!x.ScheduledForUtc.HasValue || x.ScheduledForUtc <= utcNow))
                 || (x.Status == NotificationStatus.Retrying && (!x.NextAttemptAtUtc.HasValue || x.NextAttemptAtUtc <= utcNow))
-                || (x.Status == NotificationStatus.Processing && x.ProcessingStartedAtUtc.HasValue && x.ProcessingStartedAtUtc <= utcNow.AddMinutes(-5)))
+                || (x.Status == NotificationStatus.Processing && x.ProcessingStartedAtUtc.HasValue && x.ProcessingStartedAtUtc <= utcNow.AddMinutes(-20)))
             .OrderBy(x => x.ScheduledForUtc ?? x.NextAttemptAtUtc ?? x.CreatedAtUtc)
             .Take(batchSize).Select(x => x.Id).ToListAsync(cancellationToken);
 
@@ -102,7 +102,7 @@ public sealed class NotificationRepository(ServiceDbContext dbContext) : INotifi
                 x.Status == NotificationStatus.Pending
                 || (x.Status == NotificationStatus.Scheduled && (!x.ScheduledForUtc.HasValue || x.ScheduledForUtc <= utcNow))
                 || (x.Status == NotificationStatus.Retrying && (!x.NextAttemptAtUtc.HasValue || x.NextAttemptAtUtc <= utcNow))
-                || (x.Status == NotificationStatus.Processing && x.ProcessingStartedAtUtc.HasValue && x.ProcessingStartedAtUtc <= utcNow.AddMinutes(-5))))
+                || (x.Status == NotificationStatus.Processing && x.ProcessingStartedAtUtc.HasValue && x.ProcessingStartedAtUtc <= utcNow.AddMinutes(-20))))
             .ExecuteUpdateAsync(setters => setters
                 .SetProperty(x => x.Status, NotificationStatus.Processing)
                 .SetProperty(x => x.ProcessingStartedAtUtc, (DateTime?)utcNow)
