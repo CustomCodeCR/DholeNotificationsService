@@ -18,4 +18,7 @@ public interface INotificationRepository
     Task<(IReadOnlyCollection<NotificationMessage> Items, int Total)> BrowseByRecipientAsync(string recipient, int pageNumber, int pageSize, CancellationToken cancellationToken = default);
     Task<IReadOnlyCollection<Guid>> GetDueMessageIdsAsync(int batchSize, DateTime utcNow, CancellationToken cancellationToken = default);
     Task<bool> TryClaimDueMessageAsync(Guid id, DateTime utcNow, CancellationToken cancellationToken = default);
+    Task<(int Total, int SameType)> CountRecentEmailDeliveriesAsync(
+        string entityType, string entityId, string notificationType,
+        DateTime sinceUtc, CancellationToken cancellationToken = default);
 }
