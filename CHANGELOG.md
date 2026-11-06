@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.1] - 2026-11-05
+
+- Exponer la versión desplegada de Notifications en health checks.
+
 ## [1.2.0] - 2026-11-05
 
 - Incorporates universal Dhole SemVer policy with GitHub Actions checks.
