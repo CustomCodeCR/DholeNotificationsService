@@ -56,6 +56,13 @@ builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.Authenticatio
 });
 
 var app = builder.Build();
+// Expose deployed Notifications API assembly version to monitoring.
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path.Value?.StartsWith("/health", StringComparison.OrdinalIgnoreCase) == true)
+        context.Response.Headers["X-Dhole-Version"] = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "unknown";
+    await next();
+});
 app.UseCustomCodeApi();
 app.UseCors(CorsPolicyName);
 if (app.Environment.IsDevelopment()) app.UseCustomCodeSwagger();
