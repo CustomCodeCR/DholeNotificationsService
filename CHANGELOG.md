@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.3.0] - 2026-11-08 (candidato F6.03, SIN PUBLICAR)
+
+- Preserva el Hub de notificaciones SignalR existente y el inbox REST persistente; no duplica NotificationHub con el Gateway universal.
+- Endurece asociación de conexiones a grupos autenticados de usuarios Guid válidos; prohíbe grupos de audiencia construidos desde claims arbitrarios.
+- Relay Redis Pub/Sub a SignalR usa canal acotado y procesamiento secuencial, sin tareas fire-and-forget; ante saturación el inbox REST sigue siendo fuente autoritativa.
+- Pruebas de aislamiento de destinatarios y rechazo de notificaciones inválidas con CI aislado, pendiente de gate real F6.03.
+- Versión componente 1.2.1 -> 1.3.0, ecosistema global candidato 1.13.0; sin despliegues ni escritura en develop/master.
+
 ## [1.2.1] - 2026-11-05
 
 - Consolida SemVer por componente y despliegues automáticos a staging/producción por push.
