@@ -1,0 +1,53 @@
+name: Realtime F6.03 Notifications reuse and ACL (isolated)
+on:
+  push:
+    branches: [feature/dhole-realtime-universal-rt-20261107-01]
+    paths:
+      - 'src/Dhole.Notifications.Api/Hubs/**'
+      - 'src/Dhole.Notifications.Infrastructure/Realtime/**'
+      - 'tests/Dhole.Notifications.IntegrationTests/NotificationRealtimeF6AudienceTests.cs'
+      - 'version.json'
+      - 'Directory.Build.targets'
+      - 'CHANGELOG.md'
+      - '.github/workflows/realtime-f6-notifications.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: read
+jobs:
+  notifications-realtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Validate Notifications candidate version metadata
+        run: python3 scripts/verify_dhole_version.py
+      - name: Authenticate package feed
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: dotnet nuget update source github --username github-actions --password "$GITHUB_TOKEN" --store-password-in-clear-text --configfile NuGet.Config
+      - name: Restore Notifications integration test graph
+        run: dotnet restore tests/Dhole.Notifications.IntegrationTests/Dhole.Notifications.IntegrationTests.csproj --configfile NuGet.Config
+      - name: Build Notifications production API and durable inbox dependencies
+        run: dotnet build src/Dhole.Notifications.Api/Dhole.Notifications.Api.csproj --configuration Release --no-restore
+      - name: Build Notifications integration test graph
+        run: dotnet build tests/Dhole.Notifications.IntegrationTests/Dhole.Notifications.IntegrationTests.csproj --configuration Release --no-restore
+      - name: Test F6 recipient isolation and fail-closed audience
+        run: |
+          mkdir -p TestResults
+          dotnet test tests/Dhole.Notifications.IntegrationTests/Dhole.Notifications.IntegrationTests.csproj \
+            -c Release --no-build \
+            --filter "FullyQualifiedName~NotificationRealtimeF6AudienceTests" \
+            --logger "trx;LogFileName=rt-20261107-01-f6-notifications.trx" \
+            --results-directory TestResults \
+            -- RunConfiguration.TreatNoTestsAsError=true
+      - name: Upload F6 Notifications validation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rt-20261107-01-f6-notifications
+          path: TestResults/
+          if-no-files-found: warn
