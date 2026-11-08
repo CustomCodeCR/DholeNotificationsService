@@ -1,4 +1,4 @@
-using System.Security.Claims;
+using Dhole.Notifications.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -9,42 +9,21 @@ public sealed class NotificationsHub(ILogger<NotificationsHub> logger) : Hub
 {
     public override async Task OnConnectedAsync()
     {
-        var userId = ResolveUserId(Context.User);
-
-        if (!string.IsNullOrWhiteSpace(userId))
+        if (NotificationAudiencePolicy.TryUserGroup(Context.User, out var group))
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"user:{userId}");
-            logger.LogDebug(
-                "SignalR connection {ConnectionId} joined notification group user:{UserId}.",
-                Context.ConnectionId,
-                userId
-            );
+            await Groups.AddToGroupAsync(Context.ConnectionId, group);
+            logger.LogDebug("Authenticated notification connection {ConnectionId} joined its own group.",
+                Context.ConnectionId);
         }
         else
         {
-            logger.LogWarning(
-                "Authenticated SignalR connection {ConnectionId} does not contain a supported user id claim.",
-                Context.ConnectionId
-            );
+            logger.LogWarning("Notification connection {ConnectionId} lacks a valid authenticated Guid user.",
+                Context.ConnectionId);
+            Context.Abort(); // Fail closed: never join arbitrary caller-chosen groups.
+            return;
         }
 
         await base.OnConnectedAsync();
     }
 
-    private static string? ResolveUserId(ClaimsPrincipal? user)
-    {
-        if (user is null) return null;
-
-        var raw = user.FindFirst("sub")?.Value
-            ?? user.FindFirst("user_id")?.Value
-            ?? user.FindFirst("userId")?.Value
-            ?? user.FindFirst("nameidentifier")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-        if (string.IsNullOrWhiteSpace(raw)) return null;
-
-        // Pricing/Notifications recipients use Guid user ids. Normalizing the claim
-        // guarantees that the group name matches the UserId serialized by the worker.
-        return Guid.TryParse(raw, out var parsed) ? parsed.ToString() : raw.Trim();
-    }
 }
