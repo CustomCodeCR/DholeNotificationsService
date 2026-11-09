@@ -25,7 +25,7 @@ public sealed class NotificationsResourceRealtimeBus(IConfiguration configuratio
         _redis.GetSubscriber().PublishAsync(RedisTopic, JsonSerializer.Serialize(item));
 
     public Task SubscribeAsync(Action<ResourceRealtimePush> callback) =>
-        _redis.GetSubscriber().SubscribeAsync(RedisTopic, (_, raw) =>
+        _redis.GetSubscriber().SubscribeAsync(RedisTopic, (channel, raw) =>
         {
             if (raw.IsNullOrEmpty) return;
             try
