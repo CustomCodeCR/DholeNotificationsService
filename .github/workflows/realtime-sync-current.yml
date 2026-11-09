@@ -1,0 +1,39 @@
+name: Sync realtime candidate with develop and master
+on:
+  push:
+    branches: [feature/rt-notificationshub-20261109-01]
+    paths: [.github/workflows/realtime-sync-current.yml]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: realtime-branch-sync-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Incorporate latest develop and master into the candidate only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Dhole Realtime Branch Sync'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin develop master
+          for target in develop master; do
+            if git merge-base --is-ancestor "origin/$target" HEAD; then
+              echo "$target already included"
+              continue
+            fi
+            if ! git merge --no-commit --no-ff "origin/$target"; then
+              echo "::error::Merge conflicts with $target; no remote branch will be changed."
+              git diff --name-only --diff-filter=U
+              exit 1
+            fi
+            git commit -m "sync(realtime): merge latest $target into NotificationsHub candidate"
+          done
+          git push origin HEAD:feature/rt-notificationshub-20261109-01
