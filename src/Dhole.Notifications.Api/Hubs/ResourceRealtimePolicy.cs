@@ -71,7 +71,7 @@ public sealed class NotificationsRealtimeRuntime(IConfiguration configuration)
     public bool Enabled =>
         configuration.GetValue<bool>("Features:UniversalRealtimeEnabled") &&
         configuration.GetValue<bool>("Realtime:NotificationsHostEnabled") &&
-        string.Equals(configuration["Realtime:ReleaseId"], "rt-notificationshub-20261109-01", StringComparison.Ordinal) &&
+        string.Equals(configuration["Realtime:ReleaseId"], "rt-20261107-01", StringComparison.Ordinal) &&
         (string.Equals(configuration["Realtime:DeploymentTarget"], "staging", StringComparison.OrdinalIgnoreCase) ||
          (string.Equals(configuration["Realtime:DeploymentTarget"], "production", StringComparison.OrdinalIgnoreCase) &&
           configuration.GetValue<bool>("Realtime:ProductionApproved")));
