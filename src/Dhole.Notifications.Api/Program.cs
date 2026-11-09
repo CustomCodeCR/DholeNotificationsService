@@ -29,7 +29,12 @@ builder.Services.AddHostedService<NotificationRealtimeRelayService>();
 builder.Services.AddSingleton<NotificationsRealtimeRuntime>();
 builder.Services.AddSingleton<RealtimeConnectionRegistry>();
 builder.Services.AddSingleton<OwnerRestRealtimeAuthorizer>();
-builder.Services.AddHttpClient("resource-realtime-acl", client => client.Timeout = TimeSpan.FromSeconds(6));
+builder.Services.AddHttpClient("resource-realtime-acl", client => client.Timeout = TimeSpan.FromSeconds(6))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    });
 if (new NotificationsRealtimeRuntime(builder.Configuration).Enabled)
 {
     // No extra sockets, tickets or Hub endpoints. This opt-in runs only in
