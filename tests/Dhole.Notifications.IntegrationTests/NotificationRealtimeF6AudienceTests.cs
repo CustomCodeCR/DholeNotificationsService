@@ -1,0 +1,60 @@
+using System.Security.Claims;
+using Dhole.Notifications.Infrastructure.Realtime;
+
+namespace Dhole.Notifications.IntegrationTests;
+
+[TestClass]
+public sealed class NotificationRealtimeF6AudienceTests
+{
+    private static ClaimsPrincipal Principal(string value, bool authenticated = true)
+        => new(new ClaimsIdentity(
+            [new Claim("user_id", value)], authenticated ? "jwt" : null));
+
+    [TestMethod]
+    public void Only_valid_authenticated_Guid_users_join_their_own_group()
+    {
+        var user = Guid.NewGuid();
+        Assert.IsTrue(NotificationAudiencePolicy.TryUserGroup(
+            Principal(user.ToString("B")), out var group));
+        Assert.AreEqual("user:" + user.ToString("D"), group);
+        Assert.IsFalse(NotificationAudiencePolicy.TryUserGroup(
+            Principal("all:customers"), out _));
+        Assert.IsFalse(NotificationAudiencePolicy.TryUserGroup(
+            Principal(Guid.Empty.ToString("D")), out _));
+        Assert.IsFalse(NotificationAudiencePolicy.TryUserGroup(
+            Principal(user.ToString("D"), authenticated: false), out _));
+        Assert.IsFalse(NotificationAudiencePolicy.TryUserGroup(null, out _));
+    }
+
+    [TestMethod]
+    public void Push_uses_only_server_validated_recipient_and_never_broadcasts()
+    {
+        var user = Guid.NewGuid();
+        var message = new SystemNotificationPush(
+            Guid.NewGuid(), Guid.NewGuid(), user,
+            "crm.activity.reminder", "Reminder", "Body", "{}", null, null,
+            DateTime.UtcNow);
+        Assert.IsTrue(NotificationAudiencePolicy.TryPushGroup(message, out var group));
+        Assert.AreEqual($"user:{user:D}", group);
+        Assert.IsFalse(NotificationAudiencePolicy.TryPushGroup(message with
+            { UserId = Guid.Empty }, out _));
+        Assert.IsFalse(NotificationAudiencePolicy.TryPushGroup(message with
+            { RecipientId = Guid.Empty }, out _));
+        Assert.IsFalse(NotificationAudiencePolicy.TryPushGroup(message with
+            { NotificationId = Guid.Empty }, out _));
+        Assert.IsFalse(NotificationAudiencePolicy.TryPushGroup(message with
+            { NotificationType = "" }, out _));
+    }
+
+    [TestMethod]
+    public void Prefix_lookalike_or_token_claim_cannot_target_another_users_group()
+    {
+        var user = Guid.NewGuid();
+        Assert.IsFalse(NotificationAudiencePolicy.TryUserGroup(
+            Principal("user:" + user.ToString("D")), out _));
+        var claims = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, user.ToString("D"))], "jwt"));
+        Assert.IsTrue(NotificationAudiencePolicy.TryUserGroup(claims, out var group));
+        Assert.AreEqual("user:" + user.ToString("D"), group);
+    }
+}

@@ -1,50 +1,81 @@
-using System.Security.Claims;
+using Dhole.Notifications.Infrastructure.Realtime;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Dhole.Notifications.Api.Hubs;
 
 [Authorize]
-public sealed class NotificationsHub(ILogger<NotificationsHub> logger) : Hub
+public sealed class NotificationsHub(
+    ILogger<NotificationsHub> logger,
+    RealtimeConnectionRegistry registry,
+    OwnerRestRealtimeAuthorizer authorizer,
+    NotificationsRealtimeRuntime runtime) : Hub
 {
     public override async Task OnConnectedAsync()
     {
-        var userId = ResolveUserId(Context.User);
-
-        if (!string.IsNullOrWhiteSpace(userId))
+        if (NotificationAudiencePolicy.TryUserGroup(Context.User, out var group))
         {
-            await Groups.AddToGroupAsync(Context.ConnectionId, $"user:{userId}");
-            logger.LogDebug(
-                "SignalR connection {ConnectionId} joined notification group user:{UserId}.",
-                Context.ConnectionId,
-                userId
-            );
+            await Groups.AddToGroupAsync(Context.ConnectionId, group);
+            logger.LogDebug("Authenticated notification connection {ConnectionId} joined its own group.",
+                Context.ConnectionId);
         }
         else
         {
-            logger.LogWarning(
-                "Authenticated SignalR connection {ConnectionId} does not contain a supported user id claim.",
-                Context.ConnectionId
-            );
+            logger.LogWarning("Notification connection {ConnectionId} lacks a valid authenticated Guid user.",
+                Context.ConnectionId);
+            Context.Abort(); // Fail closed: never join arbitrary caller-chosen groups.
+            return;
+        }
+
+        // Universal subscriptions are opt-in; legacy notification user groups remain.
+        if (runtime.Enabled)
+        {
+            var bearer = Context.GetHttpContext()?.Items["Dhole.Notifications.UniversalBearer"] as string;
+            if (string.IsNullOrWhiteSpace(bearer))
+            {
+                Context.Abort();
+                return;
+            }
+            registry.Connect(Context.ConnectionId, Context.User!, bearer);
         }
 
         await base.OnConnectedAsync();
     }
 
-    private static string? ResolveUserId(ClaimsPrincipal? user)
+    public async Task SubscribeResource(string resourceKind, string resourceId)
     {
-        if (user is null) return null;
+        if (!runtime.Enabled ||
+            !ResourceRealtimePolicy.TryCreate(resourceKind, resourceId, out var resource) ||
+            !registry.TryGet(Context.ConnectionId, out var user, out var bearer) ||
+            !await authorizer.CanReadAsync(resource, user, bearer, Context.ConnectionAborted))
+            throw new HubException("Realtime subscription denied.");
 
-        var raw = user.FindFirst("sub")?.Value
-            ?? user.FindFirst("user_id")?.Value
-            ?? user.FindFirst("userId")?.Value
-            ?? user.FindFirst("nameidentifier")?.Value
-            ?? user.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        if (!registry.Subscribe(Context.ConnectionId, resource, runtime.MaxSubscriptions))
+            throw new HubException("Realtime subscription limit exceeded.");
+        try
+        {
+            await Groups.AddToGroupAsync(Context.ConnectionId, resource.Group, Context.ConnectionAborted);
+        }
+        catch
+        {
+            registry.Unsubscribe(Context.ConnectionId, resource);
+            throw;
+        }
+    }
 
-        if (string.IsNullOrWhiteSpace(raw)) return null;
+    public async Task UnsubscribeResource(string resourceKind, string resourceId)
+    {
+        if (!runtime.Enabled ||
+            !ResourceRealtimePolicy.TryCreate(resourceKind, resourceId, out var resource))
+            throw new HubException("Realtime subscription denied.");
 
-        // Pricing/Notifications recipients use Guid user ids. Normalizing the claim
-        // guarantees that the group name matches the UserId serialized by the worker.
-        return Guid.TryParse(raw, out var parsed) ? parsed.ToString() : raw.Trim();
+        registry.Unsubscribe(Context.ConnectionId, resource);
+        await Groups.RemoveFromGroupAsync(Context.ConnectionId, resource.Group, Context.ConnectionAborted);
+    }
+
+    public override Task OnDisconnectedAsync(Exception? exception)
+    {
+        registry.Disconnect(Context.ConnectionId);
+        return base.OnDisconnectedAsync(exception);
     }
 }

@@ -26,6 +26,23 @@ builder.Services.AddCors(options => options.AddPolicy(CorsPolicyName, policy => 
 builder.Services.AddGrpc();
 builder.Services.AddSignalR();
 builder.Services.AddHostedService<NotificationRealtimeRelayService>();
+builder.Services.AddSingleton<NotificationsRealtimeRuntime>();
+builder.Services.AddSingleton<RealtimeConnectionRegistry>();
+builder.Services.AddSingleton<OwnerRestRealtimeAuthorizer>();
+builder.Services.AddHttpClient("resource-realtime-acl", client => client.Timeout = TimeSpan.FromSeconds(6))
+    .ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
+    {
+        AllowAutoRedirect = false,
+        UseCookies = false
+    });
+if (new NotificationsRealtimeRuntime(builder.Configuration).Enabled)
+{
+    // No extra sockets, tickets or Hub endpoints. This opt-in runs only in
+    // Notifications and is OFF for production until explicitly approved.
+    builder.Services.AddSingleton<NotificationsResourceRealtimeBus>();
+    builder.Services.AddHostedService<NotificationsResourceRealtimeRelay>();
+    builder.Services.AddHostedService<NotificationsResourceStreamConsumer>();
+}
 builder.Services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 builder.Services.AddApplication();
 builder.Services.AddPersistence(builder.Configuration);
@@ -52,6 +69,10 @@ builder.Services.PostConfigure<JwtBearerOptions>(JwtBearerDefaults.Authenticatio
                 context.Token = context.Request.Query["access_token"];
             }
         }
+        // The token is only retained in the connection registry for owner
+        // ACL checks while the pilot socket is connected. Never log it.
+        if (!string.IsNullOrWhiteSpace(context.Token))
+            context.HttpContext.Items["Dhole.Notifications.UniversalBearer"] = context.Token;
     };
 });
 
