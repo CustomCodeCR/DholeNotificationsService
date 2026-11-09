@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.5] - 2026-11-08 (F9 candidate)
+
+- PATCH de versionamiento universal Dhole 1.13.14. Excepción F3 limitada a revisión de código con pruebas TLS/WSS aisladas; sin aprobación de staging, cambios funcionales ni despliegue.
+
+
 ## [1.3.4] - 2026-11-08 (release candidato F3)
 
 - Actualización PATCH de metadatos y versión global 1.13.13 asociada al ensayo automático HTTPS/WSS de Gateway, sin cambios funcionales adicionales; ramas principales intactas.
