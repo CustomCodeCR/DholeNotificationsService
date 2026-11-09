@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.3.6] - 2026-11-08 (Dhole realtime coordinated hardening)
+
+- PATCH 1.13.15 ecosystem release alignment with F2/F6 AOF read-only checks and F10 branch-preservation fix. Service candidate unchanged; realtime flags OFF and gates F6–F10 not formally approved.
+
+
 ## [1.3.5] - 2026-11-08 (F9 candidate)
 
 - PATCH de versionamiento universal Dhole 1.13.14. Excepción F3 limitada a revisión de código con pruebas TLS/WSS aisladas; sin aprobación de staging, cambios funcionales ni despliegue.
