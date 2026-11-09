@@ -1,4 +1,5 @@
 name: NotificationsHub pilot - compile candidate only
+# Rebuild after Redis callback name collision fix.
 on:
   push:
     branches: [feature/rt-notificationshub-20261109-01]
