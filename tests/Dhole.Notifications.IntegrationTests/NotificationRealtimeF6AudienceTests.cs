@@ -135,3 +135,44 @@ public sealed class NotificationRealtimeF6AudienceTests
         Assert.AreEqual("user:" + user.ToString("D"), group);
     }
 }
+
+
+[TestClass]
+public sealed class AuthSecurityRealtimeRoutingTests
+{
+    [TestMethod]
+    public void Security_signals_require_a_real_auth_producer_and_exact_user_audience()
+    {
+        var user = Guid.NewGuid();
+        var session = Guid.NewGuid();
+        var evt = Guid.NewGuid();
+        var payload = JsonSerializer.Serialize(new
+        {
+            eventId = evt,
+            eventType = "auth.security.changed.v1",
+            schemaVersion = 1,
+            producer = "DholeAuthService",
+            aggregateType = "user",
+            aggregateId = user.ToString("D"),
+            audienceRef = $"auth:user:{user:D}",
+            action = "forceLogout",
+            targetSessionId = session.ToString("D"),
+            occurredAtUtc = DateTimeOffset.UtcNow
+        });
+        Assert.IsTrue(NotificationsResourceStreamConsumer.TryParseAuthSecurityEvent(
+            "dhole.auth.realtime.v1", evt.ToString("D"), payload, out var accepted));
+        Assert.IsNotNull(accepted);
+        Assert.AreEqual(user, accepted.UserId);
+        Assert.AreEqual(session, accepted.TargetSessionId);
+        Assert.IsFalse(NotificationsResourceStreamConsumer.TryParseAuthSecurityEvent(
+            "dhole.crm.realtime.v1", evt.ToString("D"), payload, out _));
+        Assert.IsFalse(NotificationsResourceStreamConsumer.TryParseAuthSecurityEvent(
+            "dhole.auth.realtime.v1", Guid.NewGuid().ToString("D"), payload, out _));
+        Assert.IsFalse(NotificationsResourceStreamConsumer.TryParseAuthSecurityEvent(
+            "dhole.auth.realtime.v1", evt.ToString("D"),
+            payload.Replace($"auth:user:{user:D}", $"auth:user:{Guid.NewGuid():D}"), out _));
+        Assert.IsFalse(NotificationsResourceStreamConsumer.TryParseAuthSecurityEvent(
+            "dhole.auth.realtime.v1", evt.ToString("D"),
+            payload.Replace("forceLogout", "arbitraryAction"), out _));
+    }
+}

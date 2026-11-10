@@ -42,6 +42,7 @@ if (new NotificationsRealtimeRuntime(builder.Configuration).Enabled)
     builder.Services.AddSingleton<NotificationsResourceRealtimeBus>();
     builder.Services.AddHostedService<NotificationsResourceRealtimeRelay>();
     builder.Services.AddHostedService<NotificationsResourceStreamConsumer>();
+    builder.Services.AddHostedService<AuthSecurityRealtimeRelay>();
 }
 builder.Services.AddSingleton<IDateTimeProvider, SystemDateTimeProvider>();
 builder.Services.AddApplication();
