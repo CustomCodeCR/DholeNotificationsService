@@ -1,4 +1,6 @@
 using System.Threading.Channels;
+using System.Security.Cryptography;
+using System.Text;
 using Microsoft.AspNetCore.SignalR;
 
 namespace Dhole.Notifications.Api.Hubs;
@@ -62,6 +64,25 @@ public sealed class NotificationsResourceRealtimeRelay(
             // Never Clients.All or direct fanout to an unverified client group.
             await hub.Clients.Client(connectionId).SendCoreAsync("resourceChanged",
                 new object?[] { item.Invalidation }, ct);
+        }
+
+        // Collection invalidation for modules that already publish resource events.
+        // Never broadcast to all. Every destination is reauthorized against the
+        // ORIGINAL resource ID, including newly created records.
+        if (!ResourceRealtimePolicy.TryModuleFor(resource, out var module)) return;
+        var kind = module.Kind["module.".Length..];
+        var bytes = SHA256.HashData(Encoding.UTF8.GetBytes(
+            item.Invalidation.EventId.ToString("D") + ":" + module.Kind));
+        var stableId = new Guid(bytes.AsSpan(0, 16));
+        var moduleEvent = new ResourceInvalidation(stableId,
+            module.Kind + ".changed.v1", kind, module.Id,
+            item.Invalidation.AggregateVersion, item.Invalidation.OccurredAtUtc);
+        foreach (var (connectionId, user, bearer) in connections.Subscribers(module))
+        {
+            if (!await authorizer.CanReadAsync(resource, user, bearer, ct))
+                continue; // No event, original ID or existence disclosure.
+            await hub.Clients.Client(connectionId).SendCoreAsync("resourceChanged",
+                new object?[] { moduleEvent }, ct);
         }
     }
 }
