@@ -13,6 +13,8 @@ public readonly record struct RealtimeResource(string Kind, Guid Id)
 
 public static class ResourceRealtimePolicy
 {
+    // A catalog-list signal is a fixed metadata-free resource, never a caller-picked group.
+    public static readonly Guid CatalogListId = Guid.Parse("00000000-0000-4000-8000-000000000042");
     // Only an owner-controlled REST endpoint can authorize a subscription.
     // Never allow arbitrary caller-supplied groups or paths.
     private static readonly IReadOnlyDictionary<string, string> Paths =
@@ -23,6 +25,7 @@ public static class ResourceRealtimePolicy
             ["auth.user"] = "/api/auth/users/{id}/realtime-access",
             ["config.catalog-group"] = "/api/config/catalog-groups/{id}",
             ["config.catalog-item"] = "/api/config/catalog-items/{id}",
+            ["config.catalog-list"] = "/api/config/catalog-items/realtime-access",
             ["srm.supplier"] = "/api/config/srm/suppliers/{id}/realtime-access",
             ["audit.event"] = "/api/auditlogs/events/{id}",
             ["storage.file"] = "/api/v1/storage/files/{id}",
@@ -45,7 +48,8 @@ public static class ResourceRealtimePolicy
     {
         resource = default;
         if (kind is null || !Paths.ContainsKey(kind) ||
-            !Guid.TryParse(id, out var guid) || guid == Guid.Empty)
+            !Guid.TryParse(id, out var guid) || guid == Guid.Empty ||
+            (kind == "config.catalog-list" && guid != CatalogListId))
             return false;
         resource = new RealtimeResource(kind, guid);
         return true;

@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using Dhole.Notifications.Infrastructure.Realtime;
+using Dhole.Notifications.Api.Hubs;
 
 namespace Dhole.Notifications.IntegrationTests;
 
@@ -24,6 +25,17 @@ public sealed class NotificationRealtimeF6AudienceTests
         Assert.IsFalse(NotificationAudiencePolicy.TryUserGroup(
             Principal(user.ToString("D"), authenticated: false), out _));
         Assert.IsFalse(NotificationAudiencePolicy.TryUserGroup(null, out _));
+    }
+
+    [TestMethod]
+    public void Catalog_list_rejects_arbitrary_subscription_ids()
+    {
+        var id = ResourceRealtimePolicy.CatalogListId;
+        Assert.IsTrue(ResourceRealtimePolicy.TryCreate("config.catalog-list", id.ToString("D"), out var resource));
+        Assert.AreEqual("/api/config/catalog-items/realtime-access", ResourceRealtimePolicy.PathFor(resource));
+        Assert.IsFalse(ResourceRealtimePolicy.TryCreate("config.catalog-list", Guid.NewGuid().ToString("D"), out _));
+        Assert.IsFalse(ResourceRealtimePolicy.TryCreate("config.catalog-list", Guid.Empty.ToString("D"), out _));
+        Assert.IsFalse(ResourceRealtimePolicy.TryCreate("config.private-catalogs", id.ToString("D"), out _));
     }
 
     [TestMethod]

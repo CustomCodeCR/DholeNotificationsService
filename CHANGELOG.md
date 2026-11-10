@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.4.1] - 2026-11-09
+
+- PATCH: allow one fixed metadata-only config.catalog-list subscription in existing NotificationsHub. Owner ACL validates authenticated access to the Config catalog select; arbitrary identifiers remain rejected and no record data is broadcast.
+- Staging workflow uses DholeSystem/develop. Ecosystem 1.15.2; production unchanged.
+
+
 ## [1.4.0] - 2026-11-09 (NotificationsHub universal realtime pilot; candidate)
 
 - MINOR: Reuse existing NotificationsHub and ticket transport for secured resource subscriptions, Redis stream invalidation relay and traditional notificationReceived delivery; not staged or audited yet.
