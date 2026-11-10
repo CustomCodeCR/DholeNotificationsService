@@ -19,6 +19,41 @@ public static class ResourceRealtimePolicy
     public static readonly Guid PricingRateListId = Guid.Parse("00000000-0000-4000-8000-000000000044");
     public static readonly Guid CrmAccountListId = Guid.Parse("00000000-0000-4000-8000-000000000045");
     public static readonly Guid CrmLeadListId = Guid.Parse("00000000-0000-4000-8000-000000000046");
+    private static readonly IReadOnlyDictionary<string, Guid> ModuleIds =
+        new Dictionary<string, Guid>(StringComparer.Ordinal)
+        {
+            ["crm"] = Guid.Parse("00000000-0000-4000-8000-000000000051"),
+            ["pricing"] = Guid.Parse("00000000-0000-4000-8000-000000000052"),
+            ["auth"] = Guid.Parse("00000000-0000-4000-8000-000000000053"),
+            ["config"] = Guid.Parse("00000000-0000-4000-8000-000000000054"),
+            ["srm"] = Guid.Parse("00000000-0000-4000-8000-000000000055"),
+            ["audit"] = Guid.Parse("00000000-0000-4000-8000-000000000056"),
+            ["storage"] = Guid.Parse("00000000-0000-4000-8000-000000000057"),
+            ["extraction"] = Guid.Parse("00000000-0000-4000-8000-000000000058"),
+            ["reports"] = Guid.Parse("00000000-0000-4000-8000-000000000059"),
+            ["dynamics"] = Guid.Parse("00000000-0000-4000-8000-000000000060"),
+            ["ai"] = Guid.Parse("00000000-0000-4000-8000-000000000061"),
+            ["agent"] = Guid.Parse("00000000-0000-4000-8000-000000000062"),
+            ["content"] = Guid.Parse("00000000-0000-4000-8000-000000000063")
+        };
+
+    // Safe module-level notifications have fixed IDs; delivery is still
+    // reauthorized against the original owner resource, not this topic.
+    public static bool IsModuleResource(RealtimeResource resource) =>
+        resource.Kind.StartsWith("module.", StringComparison.Ordinal) &&
+        ModuleIds.TryGetValue(resource.Kind["module.".Length..], out var expected) &&
+        resource.Id == expected;
+
+    public static bool TryModuleFor(RealtimeResource original, out RealtimeResource module)
+    {
+        module = default;
+        if (IsModuleResource(original)) return false;
+        var prefix = original.Kind.Split('.')[0];
+        if (!ModuleIds.TryGetValue(prefix, out var moduleId)) return false;
+        module = new RealtimeResource("module." + prefix, moduleId);
+        return true;
+    }
+
     // Only an owner-controlled REST endpoint can authorize a subscription.
     // Never allow arbitrary caller-supplied groups or paths.
     private static readonly IReadOnlyDictionary<string, string> Paths =
@@ -56,8 +91,14 @@ public static class ResourceRealtimePolicy
     public static bool TryCreate(string? kind, string? id, out RealtimeResource resource)
     {
         resource = default;
-        if (kind is null || !Paths.ContainsKey(kind) ||
-            !Guid.TryParse(id, out var guid) || guid == Guid.Empty ||
+        if (kind is null || !Guid.TryParse(id, out var guid) || guid == Guid.Empty)
+            return false;
+        if (kind.StartsWith("module.", StringComparison.Ordinal))
+        {
+            resource = new RealtimeResource(kind, guid);
+            return IsModuleResource(resource);
+        }
+        if (!Paths.ContainsKey(kind) ||
             (kind == "config.catalog-list" && guid != CatalogListId) ||
             (kind == "pricing.cost-list" && guid != PricingCostListId) ||
             (kind == "pricing.rate-list" && guid != PricingRateListId) ||
