@@ -4,6 +4,7 @@
   "component": "DholeNotificationsService",
   "version": "1.5.0",
   "ecosystemVersion": "1.17.0",
-  "releaseId": "DH-20261109-RT-CRITICAL-056",
-  "releaseStatus": "candidate-ci-and-staging-validation-pending"
+  "releaseId": "rt-20261107-01",
+  "releaseStatus": "candidate-ci-and-staging-validation-pending",
+  "businessReleaseId": "DH-20261109-RT-CRITICAL-056"
 }
