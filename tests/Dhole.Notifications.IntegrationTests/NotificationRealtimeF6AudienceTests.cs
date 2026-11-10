@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Dhole.Notifications.Infrastructure.Realtime;
 using Dhole.Notifications.Api.Hubs;
 
@@ -57,6 +58,48 @@ public sealed class NotificationRealtimeF6AudienceTests
             Assert.IsTrue(ResourceRealtimePolicy.TryCreate(kind, id.ToString("D"), out var resource));
             Assert.AreEqual(path, ResourceRealtimePolicy.PathFor(resource));
             Assert.IsFalse(ResourceRealtimePolicy.TryCreate(kind, Guid.NewGuid().ToString("D"), out _));
+        }
+    }
+
+    [TestMethod]
+    public void Existing_NotificationsHub_stream_accepts_collection_invalidation_envelopes()
+    {
+        var cases = new[]
+        {
+            ("dhole.config.realtime.v1", "DholeConfigService", "config:catalog-list",
+                ResourceRealtimePolicy.CatalogListId, "catalog-list"),
+            ("dhole.pricing.realtime.v1", "DholePricingService", "pricing:cost-list",
+                ResourceRealtimePolicy.PricingCostListId, "cost-list"),
+            ("dhole.pricing.realtime.v1", "DholePricingService", "pricing:rate-list",
+                ResourceRealtimePolicy.PricingRateListId, "rate-list"),
+            ("dhole.crm.realtime.v1", "DholeCRMService", "crm:accountlist",
+                ResourceRealtimePolicy.CrmAccountListId, "accountlist"),
+            ("dhole.crm.realtime.v1", "DholeCRMService", "crm:leadlist",
+                ResourceRealtimePolicy.CrmLeadListId, "leadlist")
+        };
+        foreach (var (stream, producer, prefix, id, type) in cases)
+        {
+            var evt = Guid.NewGuid();
+            var kind = prefix.Replace(':', '.');
+            var json = JsonSerializer.Serialize(new
+            {
+                eventId = evt,
+                eventType = kind + ".changed.v1",
+                schemaVersion = 1,
+                aggregateType = type,
+                aggregateId = id.ToString("D"),
+                aggregateVersion = 100L,
+                occurredAtUtc = DateTimeOffset.UtcNow,
+                audienceRef = prefix + ":" + id.ToString("D"),
+                producer,
+                payload = new { changedFields = new[] { "collection" } }
+            });
+            Assert.IsTrue(NotificationsResourceStreamConsumer.TryParseEvent(
+                stream, evt.ToString("D"), json, out var push), kind);
+            Assert.IsNotNull(push);
+            Assert.AreEqual(kind, push.Kind);
+            Assert.IsFalse(NotificationsResourceStreamConsumer.TryParseEvent(
+                stream, Guid.NewGuid().ToString("D"), json, out _), "Wrong eventId must be rejected");
         }
     }
 
