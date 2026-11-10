@@ -36,5 +36,5 @@ public static class NotificationAudiencePolicy
         return true;
     }
 
-    private static string UserGroup(Guid userId) => $"user:{userId:D}";
+    public static string UserGroup(Guid userId) => $"user:{userId:D}";
 }
