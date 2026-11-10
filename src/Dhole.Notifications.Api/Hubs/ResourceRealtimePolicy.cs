@@ -15,6 +15,10 @@ public static class ResourceRealtimePolicy
 {
     // A catalog-list signal is a fixed metadata-free resource, never a caller-picked group.
     public static readonly Guid CatalogListId = Guid.Parse("00000000-0000-4000-8000-000000000042");
+    public static readonly Guid PricingCostListId = Guid.Parse("00000000-0000-4000-8000-000000000043");
+    public static readonly Guid PricingRateListId = Guid.Parse("00000000-0000-4000-8000-000000000044");
+    public static readonly Guid CrmAccountListId = Guid.Parse("00000000-0000-4000-8000-000000000045");
+    public static readonly Guid CrmLeadListId = Guid.Parse("00000000-0000-4000-8000-000000000046");
     // Only an owner-controlled REST endpoint can authorize a subscription.
     // Never allow arbitrary caller-supplied groups or paths.
     private static readonly IReadOnlyDictionary<string, string> Paths =
@@ -22,6 +26,11 @@ public static class ResourceRealtimePolicy
         {
             ["crm.account"] = "/api/crm/accounts/{id}",
             ["pricing.rate"] = "/api/pricing/rates/{id}",
+            ["pricing.cost-list"] = "/api/pricing/costs/realtime-access",
+            ["pricing.rate-list"] = "/api/pricing/rates/realtime-access",
+            ["crm.accountlist"] = "/api/crm/accounts/realtime-access",
+            ["crm.leadlist"] = "/api/crm/leads/realtime-access",
+            ["crm.lead"] = "/api/crm/leads/{id}",
             ["auth.user"] = "/api/auth/users/{id}/realtime-access",
             ["config.catalog-group"] = "/api/config/catalog-groups/{id}",
             ["config.catalog-item"] = "/api/config/catalog-items/{id}",
@@ -49,7 +58,11 @@ public static class ResourceRealtimePolicy
         resource = default;
         if (kind is null || !Paths.ContainsKey(kind) ||
             !Guid.TryParse(id, out var guid) || guid == Guid.Empty ||
-            (kind == "config.catalog-list" && guid != CatalogListId))
+            (kind == "config.catalog-list" && guid != CatalogListId) ||
+            (kind == "pricing.cost-list" && guid != PricingCostListId) ||
+            (kind == "pricing.rate-list" && guid != PricingRateListId) ||
+            (kind == "crm.accountlist" && guid != CrmAccountListId) ||
+            (kind == "crm.leadlist" && guid != CrmLeadListId))
             return false;
         resource = new RealtimeResource(kind, guid);
         return true;
