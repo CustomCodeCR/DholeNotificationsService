@@ -39,6 +39,28 @@ public sealed class NotificationRealtimeF6AudienceTests
     }
 
     [TestMethod]
+    public void CRM_and_Pricing_list_subscriptions_reject_other_resource_ids()
+    {
+        var resources = new[]
+        {
+            ("pricing.cost-list", ResourceRealtimePolicy.PricingCostListId,
+                "/api/pricing/costs/realtime-access"),
+            ("pricing.rate-list", ResourceRealtimePolicy.PricingRateListId,
+                "/api/pricing/rates/realtime-access"),
+            ("crm.accountlist", ResourceRealtimePolicy.CrmAccountListId,
+                "/api/crm/accounts/realtime-access"),
+            ("crm.leadlist", ResourceRealtimePolicy.CrmLeadListId,
+                "/api/crm/leads/realtime-access")
+        };
+        foreach (var (kind, id, path) in resources)
+        {
+            Assert.IsTrue(ResourceRealtimePolicy.TryCreate(kind, id.ToString("D"), out var resource));
+            Assert.AreEqual(path, ResourceRealtimePolicy.PathFor(resource));
+            Assert.IsFalse(ResourceRealtimePolicy.TryCreate(kind, Guid.NewGuid().ToString("D"), out _));
+        }
+    }
+
+    [TestMethod]
     public void Push_uses_only_server_validated_recipient_and_never_broadcasts()
     {
         var user = Guid.NewGuid();
