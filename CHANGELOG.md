@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.5.0] - 2026-11-09 (candidate: realtime crítico Auth/Notifications)
+
+- MINOR: reenviar los eventos auth.security.changed.v1 hacia el grupo validado del usuario en el NotificationsHub existente, sin crear hubs paralelos ni propagar credenciales. Validación estricta de producer/usuario/sesión y pruebas de seguridad.
+- Ecosistema candidato 1.17.0, release `DH-20261109-RT-CRITICAL-056`. Sin merge a develop/master, despliegue o certificación WSS multiusuario. CI y staging pendientes.
+
+
 ## [1.4.1] - 2026-11-09
 
 - PATCH: allow one fixed metadata-only config.catalog-list subscription in existing NotificationsHub. Owner ACL validates authenticated access to the Config catalog select; arbitrary identifiers remain rejected and no record data is broadcast.
