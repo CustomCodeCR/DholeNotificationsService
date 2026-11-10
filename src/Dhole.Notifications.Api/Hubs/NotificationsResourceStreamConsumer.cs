@@ -79,7 +79,14 @@ public sealed class NotificationsResourceStreamConsumer(
                     if (!fields.TryGetValue("event_id", out var eventId))
                         fields.TryGetValue("header:event_id", out eventId);
 
-                    if (TryParseEvent(name, eventId, json, out var push))
+                    if (TryParseAuthSecurityEvent(name, eventId, json, out var security))
+                    {
+                        // Auth user/session events bypass record-owner ACL because a
+                        // blocked user can no longer pass it. Only their existing
+                        // authenticated user group receives this minimal signal.
+                        await bus.PublishSecurityAsync(security!);
+                    }
+                    else if (TryParseEvent(name, eventId, json, out var push))
                     {
                         // Publish before ACK: a crash can replay; consumers dedupe
                         // by eventId, and REST is authoritative.
@@ -101,6 +108,62 @@ public sealed class NotificationsResourceStreamConsumer(
                 logger.LogWarning(error, "Notifications resource stream retry: {Stream}", name);
                 await Task.Delay(TimeSpan.FromSeconds(5), ct);
             }
+        }
+    }
+
+    public static bool TryParseAuthSecurityEvent(string stream, string? eventIdText,
+        string? json, out AuthSecurityRealtimePush? result)
+    {
+        result = null;
+        if (stream != "dhole.auth.realtime.v1" ||
+            !Guid.TryParse(eventIdText, out var expectedId) || expectedId == Guid.Empty ||
+            string.IsNullOrWhiteSpace(json) || Encoding.UTF8.GetByteCount(json) > 2000)
+            return false;
+        try
+        {
+            using var document = JsonDocument.Parse(json);
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object ||
+                !root.TryGetProperty("eventId", out var eventId) ||
+                !Guid.TryParse(eventId.GetString(), out var id) || id != expectedId ||
+                !root.TryGetProperty("eventType", out var eventType) ||
+                eventType.GetString() != "auth.security.changed.v1" ||
+                !root.TryGetProperty("schemaVersion", out var schema) ||
+                schema.GetInt32() != 1 ||
+                !root.TryGetProperty("producer", out var producer) ||
+                producer.GetString() != "DholeAuthService" ||
+                !root.TryGetProperty("aggregateType", out var aggregateType) ||
+                aggregateType.GetString() != "user" ||
+                !root.TryGetProperty("aggregateId", out var aggregateId) ||
+                !Guid.TryParse(aggregateId.GetString(), out var userId) ||
+                userId == Guid.Empty ||
+                !root.TryGetProperty("audienceRef", out var audienceRef) ||
+                audienceRef.GetString() != $"auth:user:{userId:D}" ||
+                !root.TryGetProperty("action", out var actionField) ||
+                actionField.GetString() is not ("forceLogout" or "refreshPermissions") ||
+                !root.TryGetProperty("occurredAtUtc", out var occurredAtField) ||
+                !DateTimeOffset.TryParse(occurredAtField.GetString(), out var occurredAt) ||
+                occurredAt.Offset != TimeSpan.Zero)
+                return false;
+
+            Guid? sessionId = null;
+            if (root.TryGetProperty("targetSessionId", out var sessionField) &&
+                sessionField.ValueKind != JsonValueKind.Null)
+            {
+                if (sessionField.ValueKind != JsonValueKind.String ||
+                    !Guid.TryParse(sessionField.GetString(), out var parsed) ||
+                    parsed == Guid.Empty) return false;
+                sessionId = parsed;
+            }
+            var action = actionField.GetString()!;
+            if (action == "refreshPermissions" && sessionId is not null) return false;
+            result = new AuthSecurityRealtimePush(id, userId, sessionId, action, occurredAt);
+            return true;
+        }
+        catch (Exception error) when (
+            error is JsonException or FormatException or InvalidOperationException)
+        {
+            return false;
         }
     }
 
