@@ -42,12 +42,15 @@ public sealed class NotificationsHub(
         await base.OnConnectedAsync();
     }
 
+    // Module topics are inert until each event passes its original resource-owner ACL.
     public async Task SubscribeResource(string resourceKind, string resourceId)
     {
         if (!runtime.Enabled ||
             !ResourceRealtimePolicy.TryCreate(resourceKind, resourceId, out var resource) ||
             !registry.TryGet(Context.ConnectionId, out var user, out var bearer) ||
-            !await authorizer.CanReadAsync(resource, user, bearer, Context.ConnectionAborted))
+            (ResourceRealtimePolicy.IsModuleResource(resource)
+                ? user?.Identity?.IsAuthenticated != true || string.IsNullOrWhiteSpace(bearer)
+                : !await authorizer.CanReadAsync(resource, user, bearer, Context.ConnectionAborted)))
             throw new HubException("Realtime subscription denied.");
 
         if (!registry.Subscribe(Context.ConnectionId, resource, runtime.MaxSubscriptions))
