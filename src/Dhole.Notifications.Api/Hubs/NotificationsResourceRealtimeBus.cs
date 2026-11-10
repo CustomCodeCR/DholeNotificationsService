@@ -40,7 +40,7 @@ public sealed class NotificationsResourceRealtimeBus(IConfiguration configuratio
                 var item = JsonSerializer.Deserialize<AuthSecurityRealtimePush>(raw.ToString());
                 if (item is not null &&
                     item.EventId != Guid.Empty && item.UserId != Guid.Empty &&
-                    item.Action is "forceLogout" or "refreshPermissions" &&
+                    (item.Action is "forceLogout" or "refreshPermissions") &&
                     (item.TargetSessionId is null || item.TargetSessionId != Guid.Empty))
                     callback(item);
             }
