@@ -1,3 +1,8 @@
+## [1.6.1] - 2026-11-11
+
+- PATCH DH-20261111-PRICING-OPENING-ATTACHMENTS-084: amplía a 30 el límite de archivos adjuntos para correos de apertura de trámite, conservando validación de nombre, contenido, SMTP y protección contra reintentos ambiguos.
+- Coordinado con DholePricingService 1.10.1 y DholeSystem 1.25.1; CI/staging pendientes, sin cambio a REST, realtime ni esquema de datos.
+
 # Changelog
 
 ## [1.6.0] - 2026-11-10
