@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "ecosystem": "Dhole",
   "component": "DholeNotificationsService",
-  "version": "1.3.0",
-  "ecosystemVersion": "1.25.0",
-  "releaseId": "DH-20261110-CRM-LEAD-DUPLICATE-083",
-  "businessReleaseId": "DH-20261110-CRM-LEAD-DUPLICATE-083",
-  "releaseStatus": "candidate-ci-and-staging-pending"
+  "version": "1.3.1",
+  "ecosystemVersion": "1.25.2",
+  "releaseId": "DH-20261111-PRICING-OPENING-ATTACHMENTS-084",
+  "businessReleaseId": "DH-20261111-PRICING-OPENING-ATTACHMENTS-084",
+  "releaseStatus": "candidate-master-ci-and-staging-pending"
 }
