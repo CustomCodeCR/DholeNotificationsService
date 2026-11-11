@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using CustomCodeFramework.Redis.Streams.Abstractions;
 using CustomCodeFramework.Redis.Streams.Messages;
 using Dhole.Notifications.Application.Abstractions;
+using Dhole.Notifications.Application.Services;
 using Dhole.Notifications.Contracts.Notifications;
 
 namespace Dhole.Notifications.Workers.Streams;
@@ -49,15 +50,27 @@ internal sealed class NotificationRequestedStreamHandler(
                 return;
             }
             var payloadJson = BuildPayloadJson(root);
+            var notificationType = GetString(root, "notificationType") ?? "generic";
+            var subject = GetString(root, "subject");
+            var body = GetString(root, "body");
+            if (notificationType == CrmLeadDuplicateNotification.Type)
+            {
+                using var context = JsonDocument.Parse(payloadJson);
+                var payload = context.RootElement;
+                var formatted = CrmLeadDuplicateNotification.Format(
+                    GetString(payload, "prospectName"), GetString(payload, "sellerName"));
+                subject = formatted.Subject;
+                body = formatted.Body;
+            }
 
             await notifications.CreateMessageAsync(new CreateNotificationMessageRequest(
-                GetString(root, "notificationType") ?? "generic",
+                notificationType,
                 GetString(root, "templateCode"),
                 GetString(root, "channel") ?? "System",
                 GetString(root, "entityType"),
                 GetString(root, "entityId"),
-                GetString(root, "subject"),
-                GetString(root, "body"),
+                subject,
+                body,
                 payloadJson,
                 scheduled,
                 GetInt(root, "maxAttempts") ?? 3,
