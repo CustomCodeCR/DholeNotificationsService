@@ -1,3 +1,8 @@
+## [1.3.1] - 2026-11-11
+
+- PATCH DH-20261111-PRICING-OPENING-ATTACHMENTS-084: backport compatible con master que permite hasta 30 archivos adjuntos en correo, conservando validación de nombres, contenido, MIME y seguridad SMTP.
+- Coordinado con Pricing 1.10.1 y System 1.25.2; validación de CI y staging antes de integrar a master.
+
 # Changelog
 
 ## [1.3.0] - 2026-11-10
