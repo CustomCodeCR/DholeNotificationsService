@@ -11,7 +11,7 @@ namespace Dhole.Notifications.Infrastructure.Delivery;
 public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> options) : INotificationDeliveryChannel
 {
     private const int MaxCcRecipients = 25;
-    private const int MaxAttachmentCount = 10;
+    private const int MaxAttachmentCount = 30;
     private const int MaxAttachmentBytes = 20 * 1024 * 1024;
 
     private readonly EmailOptions _options = options.Value;
