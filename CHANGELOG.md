@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.6.0] - 2026-11-10
+
+- MINOR DH-20261110-CRM-LEAD-DUPLICATE-083: Formatea y entrega notificaciones crm.lead.duplicate.v1 con el prospecto y vendedor responsable, preservando el procesamiento idempotente de Redis Streams.
+- Ecosistema Dhole 1.25.0; validaciones CI y staging pendientes. Sin despliegue de producción aprobado.
+
 ## [1.5.0] - 2026-11-09 (candidate: realtime crítico Auth/Notifications)
 
 - MINOR: reenviar los eventos auth.security.changed.v1 hacia el grupo validado del usuario en el NotificationsHub existente, sin crear hubs paralelos ni propagar credenciales. Validación estricta de producer/usuario/sesión y pruebas de seguridad.

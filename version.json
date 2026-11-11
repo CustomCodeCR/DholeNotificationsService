@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "ecosystem": "Dhole",
   "component": "DholeNotificationsService",
-  "version": "1.5.0",
-  "ecosystemVersion": "1.17.0",
-  "releaseId": "rt-20261107-01",
-  "releaseStatus": "candidate-ci-and-staging-validation-pending",
-  "businessReleaseId": "DH-20261109-RT-CRITICAL-056"
+  "version": "1.6.0",
+  "ecosystemVersion": "1.25.0",
+  "releaseId": "DH-20261110-CRM-LEAD-DUPLICATE-083",
+  "releaseStatus": "candidate-ci-and-staging-pending",
+  "businessReleaseId": "DH-20261110-CRM-LEAD-DUPLICATE-083"
 }
