@@ -1,3 +1,8 @@
+## [1.7.0] - 2026-11-14 (API Manager REST inventory)
+
+- MINOR: inventario seguro de Notifications, sin alterar colas ni SignalR.
+- Ecosistema 1.56.0.
+
 ## [1.3.1] - 2026-11-11
 
 - PATCH DH-20261111-PRICING-OPENING-ATTACHMENTS-084: backport compatible con master que permite hasta 30 archivos adjuntos en correo, conservando validación de nombres, contenido, MIME y seguridad SMTP.
