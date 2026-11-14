@@ -1,3 +1,8 @@
+## [1.7.0] - 2026-11-14 (API Manager discovery)
+
+- MINOR: catálogo autenticado de rutas REST de Notifications para Dhole API Manager, solo metadatos y sin entregar notificaciones.
+- Global Dhole 1.56.0; mantiene SignalR y notificaciones.
+
 ## [1.6.1] - 2026-11-11
 
 - PATCH DH-20261111-PRICING-OPENING-ATTACHMENTS-084: amplía a 30 el límite de archivos adjuntos para correos de apertura de trámite, conservando validación de nombre, contenido, SMTP y protección contra reintentos ambiguos.
