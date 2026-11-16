@@ -159,6 +159,11 @@ app.MapGet("/api/internal/third-party-route-catalog", (HttpContext http) =>
                     routes.Add(new { method, path = "/" + path.TrimStart('/') });
         }
     return (IResult)Results.Ok(routes);
-}).ExcludeFromDescription();
+}).RequireAuthorization().ExcludeFromDescription();
+
+
+
+
+
 
 app.Run();
