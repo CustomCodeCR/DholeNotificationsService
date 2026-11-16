@@ -1,3 +1,8 @@
+## [1.8.0] - 2026-11-16 (Inventario protegido para API Manager)
+
+- MINOR DH-20261116-API-ROUTES-DEFAULTS-165: expone catálogo runtime de rutas por JWT con integrations.thirdparty.manage; no publica ni habilita operaciones externas.
+- Conserva scopes, permisos, seguridad e inventario realtime; oculta endpoints internos y credenciales.
+
 ## [1.7.0] - 2026-11-14 (API Manager discovery)
 
 - MINOR: catálogo autenticado de rutas REST de Notifications para Dhole API Manager, solo metadatos y sin entregar notificaciones.
