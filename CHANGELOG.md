@@ -1,3 +1,9 @@
+## [1.8.0] - 2026-11-20 (DH-20261120-VERSION-NOTICES-361 · avisos de actualización en tiempo real)
+
+- MINOR: Notifications consume cambios de preferencias de Auth por Redis Streams e invalida el aviso del frontend mediante SignalR al grupo autorizado de cada usuario, sin mensajes de bandeja ni correo.
+- Idempotencia y reconciliación REST durante desconexiones. Backport aislado sobre master sin fusionar cambios ajenos de develop.
+- Notifications 1.3.1 → 1.8.0; versión global 1.107.0. Compilación, CI y staging obligatorios antes de producción.
+
 ## [1.3.1] - 2026-11-11
 
 - PATCH DH-20261111-PRICING-OPENING-ATTACHMENTS-084: backport compatible con master que permite hasta 30 archivos adjuntos en correo, conservando validación de nombres, contenido, MIME y seguridad SMTP.
