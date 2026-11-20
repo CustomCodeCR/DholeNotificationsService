@@ -1,0 +1,25 @@
+name: Verify Notifications master release build and tests
+on:
+  pull_request:
+    branches: [master]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'Directory.Build.targets'
+      - 'version.json'
+      - '.github/workflows/ci-release-version-notices-master.yml'
+  workflow_dispatch:
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore
+        run: dotnet restore DholeNotificationsService.slnx
+      - name: Compile
+        run: dotnet build DholeNotificationsService.slnx -c Release --no-restore
+      - name: Tests
+        run: dotnet test DholeNotificationsService.slnx -c Release --no-build
