@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "ecosystem": "Dhole",
   "component": "DholeNotificationsService",
-  "version": "1.7.0",
-  "ecosystemVersion": "1.56.0",
-  "releaseId": "DH-20261114-API-MANAGER-ROUTE-DISCOVERY-143",
+  "version": "1.8.0",
+  "ecosystemVersion": "1.107.0",
+  "releaseId": "DH-20261120-VERSION-NOTICES-361",
   "releaseStatus": "candidate-ci-and-staging-pending",
-  "businessReleaseId": "DH-20261114-API-MANAGER-ROUTE-DISCOVERY-143"
+  "businessReleaseId": "DH-20261120-VERSION-NOTICES-361"
 }
