@@ -1,3 +1,10 @@
+## [1.8.0] - 2026-11-20 (DH-20261120-VERSION-NOTICES-361 · sincronización de configuración de avisos)
+
+- MINOR: consume los eventos persistentes `auth.version_update_notifications.changed` por Redis Streams y envía invalidaciones ligeras a través del bus existente de SignalR, exclusivamente al grupo validado del usuario.
+- El cambio global genera eventos individuales en Auth; Notifications no utiliza `Clients.All`, no registra mensajes de configuración en la bandeja ni revela preferencias de terceros.
+- Reintentos idempotentes con ID estable; reconexiones y eventos perdidos recuperables mediante consulta autenticada periódica de Auth desde DholeWeb.
+- DholeNotificationsService 1.7.0 → 1.8.0; DholeAuthService 1.17.0; DholeWeb y DholeSystem 1.107.0. Pruebas CI y E2E staging pendientes, producción no autorizada.
+
 ## [1.7.0] - 2026-11-14 (API Manager discovery)
 
 - MINOR: catálogo autenticado de rutas REST de Notifications para Dhole API Manager, solo metadatos y sin entregar notificaciones.
