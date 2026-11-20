@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "ecosystem": "Dhole",
   "component": "DholeNotificationsService",
-  "version": "1.3.1",
-  "ecosystemVersion": "1.25.2",
-  "releaseId": "DH-20261111-PRICING-OPENING-ATTACHMENTS-084",
-  "businessReleaseId": "DH-20261111-PRICING-OPENING-ATTACHMENTS-084",
-  "releaseStatus": "candidate-master-ci-and-staging-pending"
+  "version": "1.8.0",
+  "ecosystemVersion": "1.107.0",
+  "releaseId": "DH-20261120-VERSION-NOTICES-361",
+  "businessReleaseId": "DH-20261120-VERSION-NOTICES-361",
+  "releaseStatus": "candidate-ci-and-staging-pending"
 }
