@@ -28,24 +28,19 @@ internal sealed class VersionUpdatePreferenceChangedHandler(
             return;
 
         var scope = scopeProperty.GetString();
-        Guid userId = Guid.Empty;
-        if (string.Equals(scope, "user", StringComparison.Ordinal))
-        {
-            if (!payload.TryGetProperty("userId", out var userProperty) ||
-                !Guid.TryParse(userProperty.GetString(), out userId))
-                return;
-        }
-        else if (!string.Equals(scope, "global", StringComparison.Ordinal))
-        {
+        if (scope is not ("user" or "global") ||
+            !payload.TryGetProperty("userId", out var userProperty) ||
+            userProperty.ValueKind != JsonValueKind.String ||
+            !Guid.TryParse(userProperty.GetString(), out var userId) ||
+            userId == Guid.Empty)
             return;
-        }
 
         // Deterministic event key across retries supports client-side deduplication.
         var eventId = StreamNotificationSafety.FixedMessageId(envelope) ?? Guid.NewGuid();
         var pushed = new SystemNotificationPush(
             eventId,
             eventId,
-            userId, // Guid.Empty signals global policy invalidation to the relay.
+            userId, // F6.03: only authorized, per-user SignalR groups.
             NotificationType,
             null,
             null,
