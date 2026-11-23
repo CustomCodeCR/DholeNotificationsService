@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "releaseId": "DH-20261123-EMAIL-TEMPLATES-432",
+  "ecosystem": "Dhole",
+  "ecosystemVersion": "1.121.0",
+  "releaseStatus": "candidate-ci-and-staging-pending",
+  "components": [
+    {
+      "name": "DholeNotificationsService",
+      "previousVersion": "1.8.0",
+      "version": "1.9.0"
+    },
+    {
+      "name": "DholePricingService",
+      "previousVersion": "1.26.26",
+      "version": "1.27.0"
+    }
+  ],
+  "validation": {
+    "unitTests": "pending",
+    "integrationTests": "pending",
+    "staging": "pending",
+    "production": "not-authorized"
+  },
+  "notes": "Standardized notification email shell; selected quotation opening mail includes agent and shipping line."
+}

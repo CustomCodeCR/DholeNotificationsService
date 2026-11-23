@@ -2,9 +2,9 @@
   "schemaVersion": 1,
   "ecosystem": "Dhole",
   "component": "DholeNotificationsService",
-  "version": "1.8.0",
-  "ecosystemVersion": "1.107.0",
-  "releaseId": "DH-20261120-VERSION-NOTICES-361",
-  "businessReleaseId": "DH-20261120-VERSION-NOTICES-361",
+  "version": "1.9.0",
+  "ecosystemVersion": "1.121.0",
+  "releaseId": "DH-20261123-EMAIL-TEMPLATES-432",
+  "businessReleaseId": "DH-20261123-EMAIL-TEMPLATES-432",
   "releaseStatus": "candidate-ci-and-staging-pending"
 }

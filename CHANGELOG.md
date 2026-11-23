@@ -1,3 +1,10 @@
+## [1.9.0] - 2026-11-23 (DH-20261123-EMAIL-TEMPLATES-432 · Plantilla corporativa de correo)
+
+- MINOR: formato HTML corporativo común para correos de Notifications (Pricing, CRM, operaciones y demás eventos), con título, contexto, enlaces y pie consistentes para Outlook y Gmail.
+- Preserva documentos HTML completos ya diseñados, conserva los adjuntos y evita encapsulados múltiples en reintentos.
+- Mantiene separados los avisos de sistema y los correos; agrega pruebas de escape HTML, links e idempotencia.
+- Global 1.121.0. Compilación, CI y pruebas de staging pendientes; producción no autorizada.
+
 ## [1.8.0] - 2026-11-20 (DH-20261120-VERSION-NOTICES-361 · avisos de actualización en tiempo real)
 
 - MINOR: Notifications consume cambios de preferencias de Auth por Redis Streams e invalida el aviso del frontend mediante SignalR al grupo autorizado de cada usuario, sin mensajes de bandeja ni correo.
