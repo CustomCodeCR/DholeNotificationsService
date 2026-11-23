@@ -321,7 +321,7 @@ public sealed class NotificationApplicationService(
     private async Task<RenderedNotification> RenderAsync(NotificationMessage message, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(message.TemplateCode))
-            return renderer.Render(message.Subject, message.Body ?? string.Empty, message.PayloadJson);
+            return WrapEmail(message, renderer.Render(message.Subject, message.Body ?? string.Empty, message.PayloadJson));
 
         var template = await templateCache.GetAsync(message.TemplateCode, cancellationToken);
         if (template is null)
@@ -331,8 +331,13 @@ public sealed class NotificationApplicationService(
             template = entity.ToDto();
             await templateCache.SetAsync(template, cancellationToken);
         }
-        return renderer.Render(template.SubjectTemplate, template.BodyTemplate, message.PayloadJson);
+        return WrapEmail(message, renderer.Render(template.SubjectTemplate, template.BodyTemplate, message.PayloadJson));
     }
+
+    private static RenderedNotification WrapEmail(NotificationMessage message, RenderedNotification rendered)
+        => message.Channel == NotificationChannel.Email
+            ? CorporateEmailLayout.Apply(rendered, message.NotificationType)
+            : rendered;
 
     private static NotificationChannel ParseChannel(string value)
         => Enum.TryParse<NotificationChannel>(value, true, out var channel)
