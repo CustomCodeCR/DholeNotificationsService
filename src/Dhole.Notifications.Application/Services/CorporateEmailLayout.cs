@@ -45,21 +45,30 @@ public static class CorporateEmailLayout
               <meta name="viewport" content="width=device-width, initial-scale=1" />
               <title>{title}</title>
             </head>
-            <body data-dhole-email-layout="v1" style="margin:0;padding:0;background:#f3f6f5;color:#18352d;font-family:Arial,Helvetica,sans-serif;">
-              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f3f6f5;border-collapse:collapse;">
+            <body data-dhole-email-layout="v1" style="margin:0;padding:0;background:#f7f7f8;color:#30343b;font-family:Arial,Helvetica,sans-serif;">
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#f7f7f8;border-collapse:collapse;">
                 <tr><td align="center" style="padding:32px 12px;">
-                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;border-collapse:separate;background:#ffffff;border:1px solid #e1e9e5;border-radius:14px;">
-                    <tr><td style="padding:23px 30px;background:#123f34;border-radius:13px 13px 0 0;">
-                      <p style="margin:0;color:#b5e1d2;font-size:12px;font-weight:bold;letter-spacing:1px;">GRUPO CASTRO FALLAS</p>
-                      <p style="margin:5px 0 0;color:#ffffff;font-size:15px;font-weight:bold;">DHOLE · Notificaciones</p>
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="600" style="width:100%;max-width:600px;border-collapse:separate;background:#ffffff;border:1px solid #e5e7eb;border-radius:14px;">
+                    <tr><td style="padding:17px 30px;background:#a80e18;border-radius:13px 13px 0 0;">
+                      <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;">
+                        <tr>
+                          <td width="125" valign="middle" style="width:125px;padding:0 20px 0 0;">
+                            <img src="cid:dhole-castro-fallas-logo" alt="Castro Fallas" width="120" style="display:block;width:120px;height:auto;border:0;outline:0;text-decoration:none;" />
+                          </td>
+                          <td valign="middle" style="vertical-align:middle;">
+                            <p style="margin:0;color:#ffe1e4;font-size:12px;font-weight:bold;letter-spacing:1px;">GRUPO CASTRO FALLAS</p>
+                            <p style="margin:5px 0 0;color:#ffffff;font-size:15px;font-weight:bold;">DHOLE · Notificaciones</p>
+                          </td>
+                        </tr>
+                      </table>
                     </td></tr>
                     <tr><td style="padding:28px 30px;">
                       <p style="margin:0 0 10px;color:#9a661c;font-size:12px;font-weight:bold;letter-spacing:.7px;">{category}</p>
-                      <h1 style="margin:0 0 22px;color:#123f34;font-size:23px;line-height:31px;overflow-wrap:break-word;">{title}</h1>
-                      <div style="font-size:14px;line-height:23px;color:#29413a;overflow-wrap:anywhere;">{content}</div>
+                      <h1 style="margin:0 0 22px;color:#a80e18;font-size:23px;line-height:31px;overflow-wrap:break-word;">{title}</h1>
+                      <div style="font-size:14px;line-height:23px;color:#343a40;overflow-wrap:anywhere;">{content}</div>
                     </td></tr>
-                    <tr><td style="padding:18px 30px;border-top:1px solid #e3eae7;">
-                      <p style="margin:0;color:#687c74;font-size:12px;line-height:18px;">Notificación automática de DHOLE · Grupo Castro Fallas</p>
+                    <tr><td style="padding:18px 30px;border-top:1px solid #e5e7eb;">
+                      <p style="margin:0;color:#6b7280;font-size:12px;line-height:18px;">Notificación automática de DHOLE · Grupo Castro Fallas</p>
                     </td></tr>
                   </table>
                 </td></tr>

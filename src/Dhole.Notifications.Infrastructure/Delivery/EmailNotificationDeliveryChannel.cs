@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Mail;
+using System.Net.Mime;
+using System.Text;
 using System.Text.Json;
 using Dhole.Notifications.Application.Abstractions;
 using Dhole.Notifications.Domain.Notifications.Entities;
@@ -32,6 +34,7 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
         mail.Subject = message.Subject ?? string.Empty;
         mail.Body = message.Body ?? string.Empty;
         mail.IsBodyHtml = true;
+        AttachInlineCorporateLogo(mail);
 
         try
         {
@@ -71,6 +74,35 @@ public sealed class EmailNotificationDeliveryChannel(IOptions<EmailOptions> opti
         // Cancellation after SMTP acceptance must not turn a successful send
         // into an error that the worker tries again.
         return NotificationDeliveryResult.Success("SMTP");
+    }
+
+    private const string CorporateLogoCid = "dhole-castro-fallas-logo";
+    private const string CorporateLogoResource = "Dhole.Notifications.Infrastructure.Delivery.Assets.CastroFallasLogoWhite.png";
+
+    private static void AttachInlineCorporateLogo(MailMessage mail)
+    {
+        if (mail.Body?.Contains("cid:" + CorporateLogoCid, StringComparison.OrdinalIgnoreCase) != true)
+            return;
+
+        var resource = typeof(EmailNotificationDeliveryChannel).Assembly
+            .GetManifestResourceStream(CorporateLogoResource)
+            ?? throw new InvalidOperationException("The embedded Castro Fallas email logo is missing.");
+
+        var view = AlternateView.CreateAlternateViewFromString(mail.Body, Encoding.UTF8, MediaTypeNames.Text.Html);
+        try
+        {
+            var logo = new LinkedResource(resource, "image/png");
+            logo.ContentId = CorporateLogoCid;
+            logo.TransferEncoding = TransferEncoding.Base64;
+            view.LinkedResources.Add(logo);
+            mail.AlternateViews.Add(view);
+        }
+        catch
+        {
+            view.Dispose();
+            resource.Dispose();
+            throw;
+        }
     }
 
     private static void AddAttachments(MailMessage mail, string? payloadJson, string notificationType)

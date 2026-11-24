@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "ecosystem": "Dhole",
+  "releaseId": "DH-20261123-EMAIL-BRAND-433",
+  "releaseType": "PATCH",
+  "ecosystemVersion": "1.121.1",
+  "createdAt": "2026-11-23",
+  "components": [
+    {
+      "repository": "CustomCodeCR/DholeNotificationsService",
+      "component": "DholeNotificationsService",
+      "previous": "1.9.0",
+      "next": "1.9.1"
+    },
+    {
+      "repository": "CustomCodeCR/DholePricingService",
+      "component": "DholePricingService",
+      "previous": "1.27.0",
+      "next": "1.27.1"
+    }
+  ],
+  "changes": [
+    "Replace legacy green with Castro Fallas corporate red #A80E18 in email layouts",
+    "Embed uploaded Castro Fallas white logo as CID inline PNG compatible with Outlook and Gmail",
+    "Preserve links, email attachments, idempotence, and Pricing return mail content"
+  ],
+  "validation": {
+    "ci": "pending",
+    "staging": "pending",
+    "production": "not-authorized"
+  },
+  "productionDeploymentAuthorized": false
+}

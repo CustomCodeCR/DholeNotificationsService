@@ -22,4 +22,8 @@
     <ProjectReference Include="..\Dhole.Notifications.Contracts\Dhole.Notifications.Contracts.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="Delivery/Assets/CastroFallasLogoWhite.png" LogicalName="Dhole.Notifications.Infrastructure.Delivery.Assets.CastroFallasLogoWhite.png" />
+  </ItemGroup>
+
 </Project>
