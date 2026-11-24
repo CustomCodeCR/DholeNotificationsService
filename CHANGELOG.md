@@ -1,3 +1,10 @@
+## [1.9.1] - 2026-11-23 (DH-20261123-EMAIL-BRAND-433 · identidad Castro Fallas en correos)
+
+- PATCH: reemplaza verde por rojo corporativo #A80E18 en la plantilla compartida de Notifications, con títulos y textos en tonos neutros.
+- Integra logo blanco Castro Fallas en PNG mediante CID con recurso embebido y MIME image/png; no requiere cargar imágenes remotas.
+- Mantiene la funcionalidad actual de enlaces, adjuntos, seguridad SMTP y deduplicación; agrega pruebas de plantilla y recurso embebido.
+- Global 1.121.1; CI/staging pendientes; master requiere validación previa.
+
 ## [1.9.0] - 2026-11-23 (DH-20261123-EMAIL-TEMPLATES-432 · Plantilla corporativa de correo)
 
 - MINOR: formato HTML corporativo común para correos de Notifications (Pricing, CRM, operaciones y demás eventos), con título, contexto, enlaces y pie consistentes para Outlook y Gmail.
@@ -5,28 +12,106 @@
 - Mantiene separados los avisos de sistema y los correos; agrega pruebas de escape HTML, links e idempotencia.
 - Global 1.121.0. Compilación, CI y pruebas de staging pendientes; producción no autorizada.
 
-## [1.8.0] - 2026-11-20 (DH-20261120-VERSION-NOTICES-361 · avisos de actualización en tiempo real)
+## [1.8.0] - 2026-11-20 (DH-20261120-VERSION-NOTICES-361 · sincronización de configuración de avisos)
 
-- MINOR: Notifications consume cambios de preferencias de Auth por Redis Streams e invalida el aviso del frontend mediante SignalR al grupo autorizado de cada usuario, sin mensajes de bandeja ni correo.
-- Idempotencia y reconciliación REST durante desconexiones. Backport aislado sobre master sin fusionar cambios ajenos de develop.
-- Notifications 1.3.1 → 1.8.0; versión global 1.107.0. Compilación, CI y staging obligatorios antes de producción.
+- MINOR: consume los eventos persistentes `auth.version_update_notifications.changed` por Redis Streams y envía invalidaciones ligeras a través del bus existente de SignalR, exclusivamente al grupo validado del usuario.
+- El cambio global genera eventos individuales en Auth; Notifications no utiliza `Clients.All`, no registra mensajes de configuración en la bandeja ni revela preferencias de terceros.
+- Reintentos idempotentes con ID estable; reconexiones y eventos perdidos recuperables mediante consulta autenticada periódica de Auth desde DholeWeb.
+- DholeNotificationsService 1.7.0 → 1.8.0; DholeAuthService 1.17.0; DholeWeb y DholeSystem 1.107.0. Pruebas CI y E2E staging pendientes, producción no autorizada.
 
-## [1.3.1] - 2026-11-11
+## [1.7.0] - 2026-11-14 (API Manager discovery)
 
-- PATCH DH-20261111-PRICING-OPENING-ATTACHMENTS-084: backport compatible con master que permite hasta 30 archivos adjuntos en correo, conservando validación de nombres, contenido, MIME y seguridad SMTP.
-- Coordinado con Pricing 1.10.1 y System 1.25.2; validación de CI y staging antes de integrar a master.
+- MINOR: catálogo autenticado de rutas REST de Notifications para Dhole API Manager, solo metadatos y sin entregar notificaciones.
+- Global Dhole 1.56.0; mantiene SignalR y notificaciones.
+
+## [1.6.1] - 2026-11-11
+
+- PATCH DH-20261111-PRICING-OPENING-ATTACHMENTS-084: amplía a 30 el límite de archivos adjuntos para correos de apertura de trámite, conservando validación de nombre, contenido, SMTP y protección contra reintentos ambiguos.
+- Coordinado con DholePricingService 1.10.1 y DholeSystem 1.25.1; CI/staging pendientes, sin cambio a REST, realtime ni esquema de datos.
 
 # Changelog
 
-## [1.3.0] - 2026-11-10
+## [1.6.0] - 2026-11-10
 
-- MINOR DH-20261110-CRM-LEAD-DUPLICATE-083: Convierte los eventos crm.lead.duplicate.v1 en notificaciones de sistema persistentes con el nombre del vendedor y del prospecto.
-- Versión global Dhole 1.25.0. Validación CI y staging pendiente; sin autorización para despliegue de producción en este cambio.
+- MINOR DH-20261110-CRM-LEAD-DUPLICATE-083: Formatea y entrega notificaciones crm.lead.duplicate.v1 con el prospecto y vendedor responsable, preservando el procesamiento idempotente de Redis Streams.
+- Ecosistema Dhole 1.25.0; validaciones CI y staging pendientes. Sin despliegue de producción aprobado.
+
+## [1.5.0] - 2026-11-09 (candidate: realtime crítico Auth/Notifications)
+
+- MINOR: reenviar los eventos auth.security.changed.v1 hacia el grupo validado del usuario en el NotificationsHub existente, sin crear hubs paralelos ni propagar credenciales. Validación estricta de producer/usuario/sesión y pruebas de seguridad.
+- Ecosistema candidato 1.17.0, release `DH-20261109-RT-CRITICAL-056`. Sin merge a develop/master, despliegue o certificación WSS multiusuario. CI y staging pendientes.
+
+
+## [1.4.1] - 2026-11-09
+
+- PATCH: allow one fixed metadata-only config.catalog-list subscription in existing NotificationsHub. Owner ACL validates authenticated access to the Config catalog select; arbitrary identifiers remain rejected and no record data is broadcast.
+- Staging workflow uses DholeSystem/develop. Ecosystem 1.15.2; production unchanged.
+
+
+## [1.4.0] - 2026-11-09 (NotificationsHub universal realtime pilot; candidate)
+
+- MINOR: Reuse existing NotificationsHub and ticket transport for secured resource subscriptions, Redis stream invalidation relay and traditional notificationReceived delivery; not staged or audited yet.
+- Ecosystem candidate 1.14.0 / 16 Dhole repositories, release `rt-20261107-01` in isolated branch `feature/rt-notificationshub-20261109-01`.
+- Staging deployment, operational audit and final integration remain pending. Production flags OFF.
+
+
+## [1.3.6] - 2026-11-08 (Dhole realtime coordinated hardening)
+
+- PATCH 1.13.15 ecosystem release alignment with F2/F6 AOF read-only checks and F10 branch-preservation fix. Service candidate unchanged; realtime flags OFF and gates F6–F10 not formally approved.
+
+
+
+## [1.3.5] - 2026-11-08 (F9 candidate)
+
+- PATCH de versionamiento universal Dhole 1.13.14. Excepción F3 limitada a revisión de código con pruebas TLS/WSS aisladas; sin aprobación de staging, cambios funcionales ni despliegue.
+
+
+
+## [1.3.4] - 2026-11-08 (release candidato F3)
+
+- Actualización PATCH de metadatos y versión global 1.13.13 asociada al ensayo automático HTTPS/WSS de Gateway, sin cambios funcionales adicionales; ramas principales intactas.
+
+
+
+## [1.3.3] - 2026-11-08 (F6/F9 staging-audit candidate)
+
+- Sincroniza Dhole Realtime `rt-20261107-01` a versión global `1.13.12` tras incorporar auditoría real de persistencia en staging. PATCH 1.3.2 → 1.3.3; no modifica rutas, eventos, datos, contratos REST ni flags. No se fusiona hasta completar gates formales.
+
+
+
+## [1.3.2] - 2026-11-08 (candidato F9, sin publicar)
+
+- Sincroniza release global `rt-20261107-01` a `1.13.11` tras resolver los hallazgos de CI de Config, Reports y Gateway. Bump PATCH de DholeNotificationsService `1.3.1` a `1.3.2`, sin modificar REST, eventos, precios ni datos; flags realtime OFF y PR F9 aún DRAFT.
+
+
+
+## [1.3.1] - 2026-11-08 (candidato F9, sin publicación)
+
+- Sincroniza metadatos de versión global del batch Dhole Realtime `rt-20261107-01` a `1.13.10`; actualización PATCH independiente de DholeNotificationsService `1.3.0` → `1.3.1`. No cambia contratos REST, datos, lógica de negocio ni flags; requiere gates F0–F8 y CI de SHA final antes de merge.
+
+
+
+## [1.3.0] - 2026-11-08 (candidato F6.03, SIN PUBLICAR)
+
+- Preserva el Hub de notificaciones SignalR existente y el inbox REST persistente; no duplica NotificationHub con el Gateway universal.
+- Endurece asociación de conexiones a grupos autenticados de usuarios Guid válidos; prohíbe grupos de audiencia construidos desde claims arbitrarios.
+- Relay Redis Pub/Sub a SignalR usa canal acotado y procesamiento secuencial, sin tareas fire-and-forget; ante saturación el inbox REST sigue siendo fuente autoritativa.
+- Pruebas de aislamiento de destinatarios y rechazo de notificaciones inválidas con CI aislado, pendiente de gate real F6.03.
+- Versión componente 1.2.1 -> 1.3.0, ecosistema global candidato 1.13.0; sin despliegues ni escritura en develop/master.
+
 
 ## [1.2.1] - 2026-11-05
 
+- Consolida SemVer por componente y despliegues automáticos a staging/producción por push.
+- Sincroniza versión nativa y manifiesto del release global Dhole.
+
+
+### Notas conservadas de master
+
+
 - Actualiza versión SemVer del componente y metadatos del ecosistema Dhole 1.3.1.
 - Garantiza despliegues por push en master/develop y preserva las comprobaciones CI.
+
 
 ## [1.2.0] - 2026-11-05
 

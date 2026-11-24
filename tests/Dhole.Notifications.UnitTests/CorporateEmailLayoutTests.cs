@@ -37,4 +37,18 @@ public sealed class CorporateEmailLayoutTests
         var original = new RenderedNotification("Devuelta", "<!DOCTYPE html><html><body><h1>Corregir</h1></body></html>");
         Assert.AreEqual(original.Body, CorporateEmailLayout.Apply(original, "pricing.rate.returned").Body);
     }
+    [TestMethod]
+    public void CorporateEmailUsesCastroFallasRedAndInlineWhiteLogo()
+    {
+        var result = CorporateEmailLayout.Apply(
+            new RenderedNotification("Compromiso comercial vencido", "<p>Consultar en CRM</p>"),
+            "crm.commitment.overdue.v1");
+
+        StringAssert.Contains(result.Body, "background:#a80e18");
+        StringAssert.Contains(result.Body, "cid:dhole-castro-fallas-logo");
+        StringAssert.Contains(result.Body, "alt=\"Castro Fallas\"");
+        Assert.IsFalse(result.Body.Contains("#123f34", StringComparison.OrdinalIgnoreCase));
+        Assert.IsFalse(result.Body.Contains("#14765c", StringComparison.OrdinalIgnoreCase));
+    }
+
 }
