@@ -1,3 +1,10 @@
+## [1.9.1] - 2026-11-23 (DH-20261123-EMAIL-BRAND-433 · identidad Castro Fallas en correos)
+
+- PATCH: reemplaza verde por rojo corporativo #A80E18 en la plantilla compartida de Notifications, con títulos y textos en tonos neutros.
+- Integra logo blanco Castro Fallas en PNG mediante CID con recurso embebido y MIME image/png; no requiere cargar imágenes remotas.
+- Mantiene la funcionalidad actual de enlaces, adjuntos, seguridad SMTP y deduplicación; agrega pruebas de plantilla y recurso embebido.
+- Global 1.121.1; CI/staging pendientes; master requiere validación previa.
+
 ## [1.9.0] - 2026-11-23 (DH-20261123-EMAIL-TEMPLATES-432 · Plantilla corporativa de correo)
 
 - MINOR: formato HTML corporativo común para correos de Notifications (Pricing, CRM, operaciones y demás eventos), con título, contexto, enlaces y pie consistentes para Outlook y Gmail.
